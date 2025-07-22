@@ -1,4 +1,4 @@
-project(kag_game C)
+project(kah_game C)
 
 add_executable(kah_game
         main.c

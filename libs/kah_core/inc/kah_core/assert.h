@@ -1,16 +1,16 @@
 #ifndef ASSERT_H
 #define ASSERT_H
 
-#include <kah_core/defines.h>
 #include <stdio.h>
-#if CHECK_FEATURE(FEATURE_PLATFORM_LINUX) || CHECK_FEATURE(FEATURE_PLATFORM_APPLE)
-#include <signal.h>
-#endif
+#include <kah_core/defines.h>
 
-#if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
-#define core_debug_break() __debugbreak()
-#elif CHECK_FEATURE(FEATURE_PLATFORM_LINUX) || CHECK_FEATURE(FEATURE_PLATFORM_APPLE)
+#if defined(__linux__) || defined(__APPLE__)
+#include <csignal>
 #define core_debug_break() raise(SIGTRAP)
+#elif defined(_WIN32)
+#define core_debug_break() __debugbreak()
+#else
+#define core_debug_break() // not implemented
 #endif
 
 #define core_print_error(...) printf(__VA_ARGS__)

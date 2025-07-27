@@ -5,12 +5,13 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 //=============================================================================
 
 //===STRUCTS_INTERNAL==========================================================
 #define ALLOC_TABLE_INVALID_INDEX UINT32_MAX
 
-#define MEM_ARENA_BUFFER_SIZE (1 * MiB )
+#define MEM_ARENA_BUFFER_SIZE ( 1 * MiB )
 struct ArenaData
 {
     char data[MEM_ARENA_BUFFER_SIZE];
@@ -33,8 +34,11 @@ static AllocInfo* s_arenaAllocInfo = nullptr;
 //=============================================================================
 
 //===INTERNAL==================================================================
-uint32_t alloc_info_get_next_free_index()
-{
+void* malloc_zeroed(size_t size){
+    return calloc(1, size);
+}
+
+uint32_t alloc_info_get_next_free_index(){
     for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
         if(s_allocationTable.infosInUse[i] == false){
             return i;
@@ -44,8 +48,7 @@ uint32_t alloc_info_get_next_free_index()
     return ALLOC_TABLE_INVALID_INDEX;
 }
 
-uint32_t alloc_info_find_index(AllocInfo* allocInfo)
-{
+uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
     for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i)
     {
         if(&s_allocationTable.infos[i] == allocInfo)
@@ -82,8 +85,8 @@ AllocInfo* mem_cstd_alloc(size_t inBufferSize){
         return nullptr;
     }
 
-    void* bufferAddress = malloc(inBufferSize);
-    if(bufferAddress != nullptr)
+    void* bufferAddress = malloc_zeroed(inBufferSize);
+    if( bufferAddress != nullptr )
     {
         AllocInfo* outInfo = &s_allocationTable.infos[tableIndex];
         *outInfo = (AllocInfo){
@@ -91,10 +94,8 @@ AllocInfo* mem_cstd_alloc(size_t inBufferSize){
             .commitedMemory = inBufferSize,
             .reservedMemory = inBufferSize
         };
-        s_allocationTable.infosInUse[tableIndex] = true;
         return outInfo;
     }
-    core_assert(bufferAddress != nullptr);
     return nullptr;
 }
 
@@ -106,7 +107,7 @@ void mem_cstd_free(AllocInfo* allocInfo){
         core_assert_msg(false, "err: could not find alloc info in table");
         return;
     }
-
+    core_assert(allocInfo->bufferAddress == s_allocationTable.infos[tableIndex].bufferAddress);
     free(allocInfo->bufferAddress);
     *allocInfo = (AllocInfo){};
     s_allocationTable.infosInUse[tableIndex] = false;

@@ -6,8 +6,7 @@
 //=============================================================================
 
 //===TYPES=====================================================================
-struct AllocInfo
-{
+struct AllocInfo{
     void* bufferAddress;
     size_t commitedMemory;
     size_t reservedMemory;

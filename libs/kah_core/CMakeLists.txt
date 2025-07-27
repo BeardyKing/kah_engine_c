@@ -7,6 +7,8 @@ add_library(kah_core
         inc/kah_core/assert.h
         src/allocators.c
         inc/kah_core/defines.h
+        inc/kah_core/fixed_array.h
+        src/fixed_array.c
 )
 
 target_include_directories(kah_core

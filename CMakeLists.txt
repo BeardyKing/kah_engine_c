@@ -12,7 +12,7 @@ set(KAH_CMAKE_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 #====LIBS=================
 add_subdirectory(libs/kah_core)
-#add_subdirectory(libs/kah_math)
+add_subdirectory(libs/kah_math)
 #add_subdirectory(libs/kah_gfx)
 #add_subdirectory(libs/kah_converter)
 

@@ -16,9 +16,9 @@ target_include_directories(kah_core
         PRIVATE inc/kah_core
 )
 
-#target_link_libraries(kah_core
-#        kah_math
-#)
+target_link_libraries(kah_core
+        kah_math
+)
 
 set_target_properties(kah_core PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED YES C_EXTENSIONS NO)
 

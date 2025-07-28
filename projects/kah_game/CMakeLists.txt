@@ -5,6 +5,7 @@ add_executable(kah_game
 )
 
 target_link_libraries(kah_game
+        kah_math
         kah_core
 )
 

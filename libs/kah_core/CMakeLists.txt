@@ -9,6 +9,14 @@ add_library(kah_core
         inc/kah_core/defines.h
         inc/kah_core/fixed_array.h
         src/fixed_array.c
+        inc/kah_core/window.h
+        src/window_win32.c
+        inc/kah_core/input_types.h
+        inc/kah_core/input.h
+        src/input.c
+        inc/kah_core/time.h
+        src/time_win32.c
+        src/time_linux.c
 )
 
 target_include_directories(kah_core

@@ -24,7 +24,7 @@ LRESULT (*g_windowProcCallback_Func)(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 
 struct WindowInfo {
-    WNDCLASS windowClass;
+    WNDCLASSEX windowClass;
     HWND handle;
     const wchar_t *applicationName;
     const wchar_t *titleName;
@@ -218,7 +218,7 @@ static void check_cursor_over_window(MSG *msg) {
 }
 
 static void window_poll() {
-    MSG msg = {};
+    MSG msg = (MSG){};
     while (PeekMessage(&msg, s_windowInfo.handle, 0, 0, PM_REMOVE)) {
         check_cursor_over_window(&msg);
         TranslateMessage(&msg);
@@ -306,24 +306,40 @@ void window_create(const char windowTitle[KAH_MAX_WINDOW_TITLE_SIZE], const vec2
 
     HINSTANCE hInstance = GetModuleHandle(nullptr);
     {
-        s_windowInfo = (WindowInfo){};
-        s_windowInfo.width = windowSize.x;
-        s_windowInfo.height = windowSize.y;
-        s_windowInfo.posX = screenX;
-        s_windowInfo.posY = screenY;
-        s_windowInfo.applicationName = L"" "KAH_WINDOW_APPLICATION_NAME";
-        s_windowInfo.titleName = s_wc_windowTitle;
-        s_windowInfo.windowClass.lpfnWndProc = window_procedure_callback;
-        s_windowInfo.windowClass.hInstance = hInstance;
-        s_windowInfo.windowClass.lpszClassName = s_windowInfo.applicationName;
-        s_windowInfo.windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
-        s_windowInfo.windowClass.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+        s_windowInfo = (WindowInfo){
+            .windowClass = (WNDCLASSEX){
+                .cbSize = sizeof(s_windowInfo.windowClass) ,
+                .style = CS_HREDRAW | CS_VREDRAW,
+                .lpfnWndProc = window_procedure_callback,
+                // .cbClsExtra = ,
+                // .cbWndExtra = ,
+                .hInstance = hInstance,
+                .hIcon = LoadIcon(nullptr, IDI_APPLICATION),
+                .hCursor = LoadCursor(nullptr, IDC_ARROW),
+                .hbrBackground = (HBRUSH)COLOR_BACKGROUND,
+                // .lpszMenuName = ,
+                .lpszClassName = L"KAH_WINDOW_APPLICATION_NAME",
+                // .hIconSm =
+            },
+            .handle = nullptr,
+            .applicationName = L"KAH_WINDOW_APPLICATION_NAME",
+            .titleName = s_wc_windowTitle,
+            .width = windowSize.x,
+            .height = windowSize.y,
+            .posX = screenX,
+            .posY = screenY,
+            .shouldWindowClose = false,
+            .currentCursorState = CURSOR_NORMAL,
+            .lockedCursorPosition = (vec2i){0,0},
+            .virtualCursorPosition = (vec2i){0,0},
+            .cursorOverWindow = false
+        };
+
+        RegisterClassEx(&s_windowInfo.windowClass);
     }
 
-    RegisterClass(&s_windowInfo.windowClass);
-
     s_windowInfo.handle = CreateWindowEx(
-            0,
+            WS_EX_LEFT,
             s_windowInfo.applicationName,
             s_windowInfo.titleName,
             WS_OVERLAPPEDWINDOW,
@@ -339,6 +355,7 @@ void window_create(const char windowTitle[KAH_MAX_WINDOW_TITLE_SIZE], const vec2
 
     core_assert_msg(s_windowInfo.handle, "Err: Failed to create window.")
     ShowWindow(s_windowInfo.handle, SW_SHOWDEFAULT);
+    UpdateWindow(s_windowInfo.handle);
     s_windowInfo.shouldWindowClose = false;
     {
         RAWINPUTDEVICE rawInputDevice[1];
@@ -352,14 +369,7 @@ void window_create(const char windowTitle[KAH_MAX_WINDOW_TITLE_SIZE], const vec2
 }
 
 void window_cleanup() {
-    if (s_windowInfo.handle) {
-        DestroyWindow(s_windowInfo.handle);
-        s_windowInfo.handle = nullptr;
-    }
-
-    if (s_windowInfo.windowClass.lpszClassName && s_windowInfo.windowClass.hInstance) {
-        UnregisterClass(s_windowInfo.windowClass.lpszClassName, s_windowInfo.windowClass.hInstance);
-    }
+    DestroyWindow(s_windowInfo.handle);
 
     s_windowInfo = (WindowInfo){};
 }

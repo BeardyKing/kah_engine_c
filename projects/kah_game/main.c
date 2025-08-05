@@ -1,3 +1,4 @@
+//===INCLUDES==================================================================
 #include <kah_core/allocators.h>
 #include <kah_core/defines.h>
 #include <kah_core/assert.h>
@@ -7,10 +8,11 @@
 #include <kah_core/time.h>
 #include <kah_core/window.h>
 
+#include <kah_gfx/gfx_interface.h>
+
 #include <stdio.h>
 #include <stdint.h>
-
-
+//=============================================================================
 
 int main(void)
 {
@@ -22,12 +24,17 @@ int main(void)
         window_create("kah engine - runtime", windowSize, KAH_WINDOW_POSITION_CENTERED);
         time_create();
         input_create();
+        gfx_create(window_get_handle());
+
         while (window_is_open()){
             time_tick();
             input_set_time(time_current());
             window_update();
             input_update();
+            gfx_update();
         }
+
+        gfx_cleanup();
         input_cleanup();
         time_cleanup();
         window_cleanup();

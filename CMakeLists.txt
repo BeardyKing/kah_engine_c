@@ -8,12 +8,12 @@ endif()
 set(KAH_CMAKE_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 #====THIRD_PARTY_LIBS=====
-#add_subdirectory(libs/third_party)
+add_subdirectory(libs/third_party)
 
 #====LIBS=================
 add_subdirectory(libs/kah_core)
 add_subdirectory(libs/kah_math)
-#add_subdirectory(libs/kah_gfx)
+add_subdirectory(libs/kah_gfx)
 #add_subdirectory(libs/kah_converter)
 
 #====PROJECTS=============

@@ -7,6 +7,7 @@ add_executable(kah_game
 target_link_libraries(kah_game
         kah_math
         kah_core
+        kah_gfx
 )
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)

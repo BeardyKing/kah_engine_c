@@ -19,6 +19,9 @@
 #define FEATURE_PLATFORM_LINUX   FEATURE_OFF
 #define FEATURE_PLATFORM_WINDOWS FEATURE_ON
 #endif
+
+#define FEATURE_RUN_TESTS FEATURE_OFF
+
 //=============================================================================
 
 #endif //DEFINES_H

@@ -21,6 +21,10 @@ add_library(kah_core
         inc/kah_core/utils.h
         src/bit_array.c
         src/assert.c
+        inc/kah_core/tests/test_bits.h
+        src/tests/test_bits.c
+        src/tests/test_data_structures.c
+        inc/kah_core/tests/test_data_structures.h
 )
 
 target_include_directories(kah_core

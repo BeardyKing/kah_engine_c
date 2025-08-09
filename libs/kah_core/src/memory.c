@@ -2,8 +2,10 @@
 #include <kah_core/memory.h>
 #include <kah_core/assert.h>
 #include <kah_core/defines.h>
+#include <kah_core/utils.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 //=============================================================================
@@ -11,7 +13,7 @@
 //===STRUCTS_INTERNAL==========================================================
 #define ALLOC_TABLE_INVALID_INDEX UINT32_MAX
 
-#define MEM_ARENA_BUFFER_SIZE ( 1 * MiB )
+#define MEM_ARENA_BUFFER_SIZE ( 1 * KAH_MiB )
 struct ArenaData
 {
     char data[MEM_ARENA_BUFFER_SIZE];

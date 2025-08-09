@@ -17,6 +17,10 @@ add_library(kah_core
         inc/kah_core/time.h
         src/time_win32.c
         src/time_linux.c
+        inc/kah_core/bit_array.h
+        inc/kah_core/utils.h
+        src/bit_array.c
+        src/assert.c
 )
 
 target_include_directories(kah_core

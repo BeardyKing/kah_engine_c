@@ -3,6 +3,8 @@
 #include <kah_gfx/vulkan/gfx_vulkan.h>
 
 #include <kah_core/assert.h>
+
+#include <stdio.h>
 //=============================================================================
 
 //===INTERNAL_STRUCTS==========================================================

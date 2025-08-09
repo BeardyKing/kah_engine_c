@@ -353,7 +353,7 @@ void window_create(const char windowTitle[KAH_MAX_WINDOW_TITLE_SIZE], const vec2
             nullptr
     );
 
-    core_assert_msg(s_windowInfo.handle, "Err: Failed to create window.")
+    core_assert_msg(s_windowInfo.handle, "Err: Failed to create window.");
     ShowWindow(s_windowInfo.handle, SW_SHOWDEFAULT);
     UpdateWindow(s_windowInfo.handle);
     s_windowInfo.shouldWindowClose = false;

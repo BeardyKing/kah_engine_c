@@ -1,12 +1,14 @@
 //===INCLUDES==================================================================
-#include <kah_core/allocators.h>
 #include <kah_core/defines.h>
+#include <kah_core/allocators.h>
 #include <kah_core/assert.h>
 #include <kah_core/memory.h>
 #include <kah_core/fixed_array.h>
 #include <kah_core/input.h>
 #include <kah_core/time.h>
 #include <kah_core/window.h>
+#include <kah_core/utils.h>
+#include <kah_core/bit_array.h>
 
 #include <kah_gfx/gfx_interface.h>
 
@@ -14,12 +16,78 @@
 #include <stdint.h>
 //=============================================================================
 
+void run_u64_util_tests() {
+    // BitArray_64 array = {
+    //     .header.bitCount = 64,
+    //     .buf = { 0 }
+    // };
+    BitArrayDynamic array = {
+        .header.bitCount = 64,
+        .buf = allocators()->arena.alloc(sizeof(uint64_t))->bufferAddress
+    };
+    uint64_t* word = bitarray_buffer(&array.header);
+
+    u64_set_bit(word, 3);
+    printf("Set bit 3:\n");
+    bitarray_print(&array.header);
+    core_assert(u64_is_bit_set(*word, 3));
+
+    u64_clear_bit(word, 3);
+    printf("Cleared bit 3:\n");
+    bitarray_print(&array.header);
+    core_assert(!u64_is_bit_set(*word, 3));
+
+    u64_toggle_bit(word, 7);
+    printf("Toggled bit 7 (set):\n");
+    bitarray_print(&array.header);
+    core_assert(u64_is_bit_set(*word, 7));
+
+    u64_toggle_bit(word, 7);
+    printf("Toggled bit 7 (cleared):\n");
+    bitarray_print(&array.header);
+    core_assert(!u64_is_bit_set(*word, 7));
+
+    u64_set_bit_range(word, 4, 8);
+    printf("Set bit range [4,8):\n");
+    bitarray_print(&array.header);
+    core_assert((*word & 0xF0) == 0xF0);
+
+    u64_clear_bit_range(word, 5, 7);
+    printf("Cleared bit range [5,7):\n");
+    bitarray_print(&array.header);
+    uint64_t expected = (1ULL << 7) | (1ULL << 4);
+    core_assert((*word & 0xF0) == expected);
+
+    size_t setBits = u64_count_set_bits(*word);
+    printf("Counted %zu set bits:\n", setBits);
+    bitarray_print(&array.header);
+    core_assert(setBits == 2);
+
+    size_t unsetBits = u64_count_unset_bits(*word);
+    printf("Counted %zu unset bits:\n", unsetBits);
+    bitarray_print(&array.header);
+    core_assert(unsetBits == 62);
+
+    *word = 0x0000000000001000ULL;
+    printf("Bit pattern with only bit 12 set:\n");
+    bitarray_print(&array.header);
+    size_t lz = u64_count_leading_zeros(*word);
+    size_t tz = u64_count_trailing_zeros(*word);
+    printf("Leading zeros: %zu, Trailing zeros: %zu\n", lz, tz);
+    core_assert(lz == 51);
+    core_assert(tz == 12);
+
+    printf("=== All u64 util tests passed ===\n");
+}
+
 int main(void)
 {
     const vec2i windowSize = {1024, 768};
-
     mem_create();
     allocator_create();
+
+    run_u64_util_tests();
+
     {
         window_create("kah engine - runtime", windowSize, KAH_WINDOW_POSITION_CENTERED);
         time_create();
@@ -88,5 +156,3 @@ int main(void)
     core_assert_msg(mem_alloc_table_empty(), "err: memory leaks");
     return 0;
 }
-
-

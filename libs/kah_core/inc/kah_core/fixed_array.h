@@ -16,7 +16,7 @@ struct FixedArray{
 //=============================================================================
 
 //===API=======================================================================
-void fixed_array_insert(FixedArray* fixedArray, uint32_t index, void* data);
+void  fixed_array_insert(FixedArray* fixedArray, uint32_t index, void* data);
 void* fixed_array_get(FixedArray* fixedArray, uint32_t index);
 //=============================================================================
 

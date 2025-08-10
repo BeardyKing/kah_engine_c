@@ -32,17 +32,19 @@ struct BitArrayDynamic{ BitArrayHeader header; uint64_t* buf;     } typedef BitA
 
 //===API=======================================================================
 __forceinline uint64_t* bitarray_buffer(BitArrayHeader* header) { return (uint64_t*)(header + 1); }
-bool bitarray_is_bit_set(BitArrayHeader* header, size_t bitIndex);
-void bitarray_set_bit(BitArrayHeader* header, size_t bitIndex);
-void bitarray_clear_bit(BitArrayHeader* header, size_t bitIndex);
-void bitarray_toggle_bit(BitArrayHeader* header, size_t bitIndex);
-void bitarray_set_bit_range(BitArrayHeader* header, size_t startBit, size_t endBit);
-void bitarray_clear_bit_range(BitArrayHeader* header, size_t startBit, size_t endBit);
+
+bool   bitarray_check_bit(BitArrayHeader* header, size_t bitIndex);
+void   bitarray_set_bit(BitArrayHeader* header, size_t bitIndex);
+void   bitarray_clear_bit(BitArrayHeader* header, size_t bitIndex);
+void   bitarray_toggle_bit(BitArrayHeader* header, size_t bitIndex);
+void   bitarray_set_bit_range(BitArrayHeader* header, size_t startBit, size_t endBit);
+void   bitarray_clear_bit_range(BitArrayHeader* header, size_t startBit, size_t endBit);
 size_t bitarray_count_set_bits(BitArrayHeader* header);
 size_t bitarray_count_unset_bits(BitArrayHeader* header);
 size_t bitarray_count_trailing_zeros(BitArrayHeader* header);
 size_t bitarray_count_leading_zeros(BitArrayHeader* header);
-void bitarray_print(BitArrayHeader* header);
+size_t bitarray_find_first_unset_bit(BitArrayHeader* header);
+void   bitarray_print(BitArrayHeader* header);
 //=============================================================================
 
 //===BITSET_UTILS==============================================================

@@ -11,8 +11,8 @@
 //===API=======================================================================
 __forceinline size_t align_up(size_t size, size_t alignment)   { core_assert(alignment != 0); size_t mask = alignment - 1; return ((alignment & mask) == 0) ? ((size + mask) & ~mask) : (((size + mask)/alignment)*alignment); }
 __forceinline size_t align_down(size_t size, size_t alignment) { core_assert(alignment != 0); size_t mask = alignment - 1; return ((alignment & mask) == 0) ? (size & ~mask) : ((size / alignment) * alignment); }
-__forceinline bool is_power_of_two(size_t value)               { return ((value & (value - 1)) == 0); } //0 considered power of 2
-__forceinline bool is_aligned_ptr(void* p, size_t alignment )  { core_assert(alignment != 0); return (((uintptr_t)p % alignment) == 0); }
+__forceinline bool   is_power_of_two(size_t value)               { return ((value & (value - 1)) == 0); } //0 considered power of 2
+__forceinline bool   is_aligned_ptr(void* p, size_t alignment )  { core_assert(alignment != 0); return (((uintptr_t)p % alignment) == 0); }
 
 //val type_max( type );
 //val type_min( type );

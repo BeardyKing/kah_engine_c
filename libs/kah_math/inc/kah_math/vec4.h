@@ -29,7 +29,7 @@ union vec4d{
 
 //===API=======================================================================
 uint32_t pack_vec4f_to_uint32_t(const vec4f* vec);
-union vec4f unpack_uint32_t_to_vec4f(uint32_t packedValue);
+vec4f    unpack_uint32_t_to_vec4f(uint32_t packedValue);
 //=============================================================================
 
 

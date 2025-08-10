@@ -3,6 +3,7 @@
 #include <kah_core/assert.h>
 #include <kah_core/defines.h>
 #include <kah_core/utils.h>
+#include <kah_core/bit_array.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,7 +25,7 @@ struct ArenaData
 struct AllocTable
 {
     AllocInfo infos[MEM_MAX_DYNAMIC_ALLOCATIONS];
-    bool infosInUse[MEM_MAX_DYNAMIC_ALLOCATIONS]; //TODO: Replace with bit array or table with hashmap
+    BitArray_256 infoInUse;
 } typedef AllocTable;
 //=============================================================================
 
@@ -41,13 +42,9 @@ void* malloc_zeroed(size_t size){
 }
 
 uint32_t alloc_info_get_next_free_index(){
-    for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
-        if(s_allocationTable.infosInUse[i] == false){
-            return i;
-        }
-    }
-    core_assert_msg(false, "err: alloc info has no free slots");
-    return ALLOC_TABLE_INVALID_INDEX;
+    const size_t bitIndex = bitarray_find_first_unset_bit(&s_allocationTable.infoInUse.header);
+    core_assert_msg(bitIndex != UINT64_MAX, "err: alloc info has no free slots");
+    return bitIndex != UINT64_MAX ? bitIndex : ALLOC_TABLE_INVALID_INDEX;
 }
 
 uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
@@ -91,6 +88,8 @@ AllocInfo* mem_cstd_alloc(size_t inBufferSize){
     if( bufferAddress != nullptr )
     {
         AllocInfo* outInfo = &s_allocationTable.infos[tableIndex];
+        bitarray_set_bit(&s_allocationTable.infoInUse.header, tableIndex);
+
         *outInfo = (AllocInfo){
             .bufferAddress = bufferAddress,
             .commitedMemory = inBufferSize,
@@ -104,37 +103,33 @@ AllocInfo* mem_cstd_alloc(size_t inBufferSize){
 void mem_cstd_free(AllocInfo* allocInfo){
     core_assert(allocInfo != nullptr);
     const uint32_t tableIndex = alloc_info_find_index(allocInfo);
-    if(tableIndex == ALLOC_TABLE_INVALID_INDEX)
-    {
+    if(tableIndex == ALLOC_TABLE_INVALID_INDEX){
         core_assert_msg(false, "err: could not find alloc info in table");
         return;
     }
     core_assert(allocInfo->bufferAddress == s_allocationTable.infos[tableIndex].bufferAddress);
     free(allocInfo->bufferAddress);
     *allocInfo = (AllocInfo){};
-    s_allocationTable.infosInUse[tableIndex] = false;
+    bitarray_clear_bit(&s_allocationTable.infoInUse.header, tableIndex);
 }
 
 void mem_cstd_realloc(AllocInfo* allocInfo, size_t inBufferSize){
     core_assert(allocInfo != nullptr);
     const uint32_t tableIndex = alloc_info_find_index(allocInfo);
-    if(tableIndex == ALLOC_TABLE_INVALID_INDEX)
-    {
+    if(tableIndex == ALLOC_TABLE_INVALID_INDEX){
         core_assert_msg(false, "err: could not find alloc info in table");
         return;
     }
 
     void* bufferAddress = realloc(allocInfo->bufferAddress, inBufferSize);
-    if(bufferAddress != nullptr)
-    {
+    if(bufferAddress != nullptr){
         *allocInfo = (AllocInfo){
             .bufferAddress = bufferAddress,
             .commitedMemory = inBufferSize,
             .reservedMemory = inBufferSize
         };
     }
-    else
-    {
+    else{
         core_assert_msg(false, "err: realloc failed");
         mem_cstd_free(allocInfo);
     }
@@ -173,18 +168,14 @@ void mem_page_free(AllocInfo* allocInfo){
 }
 
 bool mem_alloc_table_empty(){
-    bool hasAllocationsInTable = false;
-    for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
-        hasAllocationsInTable |= s_allocationTable.infosInUse[i];
-    }
-    return !hasAllocationsInTable;
+    return bitarray_count_set_bits(&s_allocationTable.infoInUse.header) == 0;
 }
 
 void mem_dump_info(){
     size_t totalCommited = 0;
     size_t totalReserved = 0;
     for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
-        const bool inUse = s_allocationTable.infosInUse[i];
+        const bool inUse = bitarray_check_bit(&s_allocationTable.infoInUse.header, i);
         if(inUse){
             const AllocInfo* info = &s_allocationTable.infos[i];
             printf("MEM:\t [Slot: %u] [Address: %p] [Commited: %zu] [Reserved: %zu]\n", i, info->bufferAddress, info->commitedMemory, info->reservedMemory);
@@ -193,8 +184,7 @@ void mem_dump_info(){
         }
     }
 
-    if(totalCommited > 0 || totalReserved > 0)
-    {
+    if(totalCommited > 0 || totalReserved > 0){
         printf("MEM:\t [Total Commited: %zu]\n", totalCommited);
         printf("MEM:\t [Total Reserved: %zu]\n", totalReserved);
     }
@@ -205,6 +195,7 @@ void mem_dump_info(){
 //===INIT/SHUTDOWN=============================================================
 void mem_create(){
     {
+        s_allocationTable = (AllocTable){.infoInUse.header.bitCount = 256, .infoInUse.buf = {0ULL, 0ULL, 0ULL, 0ULL}};
         s_arenaAllocInfo = mem_cstd_alloc(sizeof(ArenaData));
         s_arenaData = (ArenaData*)s_arenaAllocInfo->bufferAddress;
     }

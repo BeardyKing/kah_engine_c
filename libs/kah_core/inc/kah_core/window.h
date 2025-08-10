@@ -12,12 +12,12 @@
 #define KAH_WINDOW_POSITION_CENTERED (vec2i){UINT32_MAX, UINT32_MAX}
 
 //===API=======================================================================
-bool window_is_open();
-void window_update();
-void window_set_cursor(InputCursorState state);
-void window_set_cursor_lock_position(vec2i lockPos);
-bool window_is_cursor_over_window();
-void *window_get_handle();
+bool  window_is_open();
+void  window_update();
+void  window_set_cursor(InputCursorState state);
+void  window_set_cursor_lock_position(vec2i lockPos);
+bool  window_is_cursor_over_window();
+void* window_get_handle();
 
 //CALLBACK: WIN32: LRESULT (*)(HWND, UINT, WPARAM, LPARAM
 //CALLBACK: LINUX  : typedef void (*EventCallback)(XEvent* event);

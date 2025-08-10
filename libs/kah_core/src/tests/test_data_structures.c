@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <kah_core/defines.h>
 #if CHECK_FEATURE(FEATURE_RUN_TESTS)
 
@@ -66,14 +67,89 @@ void internal_run_allocator_tests() {
     printf("Allocator freed successfully\n");
     printf("=== Allocator tests passed ===\n\n");
 }
+
+#define MAX_LIVE_ALLOCS 254 //-1 for reserved arena alloc
+#define TOTAL_OPS 1000
+
+void internal_run_allocator_tests_rand() {
+    printf("=== Testing cstd Allocator alloc, realloc, and free (extended) ===\n");
+
+    typedef struct {
+        AllocInfo* info;
+        int32_t* ptr;
+        size_t size;
+    } LiveAlloc;
+
+    LiveAlloc liveAllocs[MAX_LIVE_ALLOCS] = {0};
+    size_t liveCount = 0;
+    size_t totalOps = 0;
+
+    while (totalOps < TOTAL_OPS) {
+        bool canAlloc = (liveCount < MAX_LIVE_ALLOCS);
+        bool canFree  = (liveCount > 0);
+
+        int op = rand() % 3;
+
+        if (op == 0 && canAlloc) {
+            size_t count = 1 + rand() % 32;
+            AllocInfo* info = allocators()->cstd.alloc(sizeof(int32_t) * count);
+            core_assert(info != nullptr);
+
+            int32_t* ptr = (int32_t*)info->bufferAddress;
+            for (size_t i = 0; i < count; ++i) {
+                ptr[i] = (int32_t)i;
+            }
+
+            liveAllocs[liveCount++] = (LiveAlloc){ .info = info, .ptr = ptr, .size = count };
+            printf("Alloc [%zu]: %zu int32_t\n", liveCount - 1, count);
+            totalOps++;
+        }
+        else if (op == 1 && canFree) {
+            size_t index = rand() % liveCount;
+            LiveAlloc* alloc = &liveAllocs[index];
+
+            size_t newCount = 1 + rand() % 64;
+            allocators()->cstd.realloc(alloc->info, sizeof(int32_t) * newCount);
+            alloc->ptr = (int32_t*)alloc->info->bufferAddress;
+
+            size_t minCount = (alloc->size < newCount) ? alloc->size : newCount;
+            for (size_t i = 0; i < minCount; ++i) {
+                core_assert(alloc->ptr[i] == (int32_t)i); // validated realloc data matches
+            }
+
+            for (size_t i = alloc->size; i < newCount; ++i) {
+                alloc->ptr[i] = (int32_t)i;
+            }
+
+            alloc->size = newCount;
+            printf("Realloc [%zu]: now %zu int32_t\n", index, newCount);
+            totalOps++;
+        }
+        else if (op == 2 && canFree) {
+            size_t index = rand() % liveCount;
+            allocators()->cstd.free(liveAllocs[index].info);
+            printf("Free [%zu]\n", index);
+
+            liveAllocs[index] = liveAllocs[--liveCount];
+            totalOps++;
+        }
+    }
+
+    for (size_t i = 0; i < liveCount; ++i) {
+        allocators()->cstd.free(liveAllocs[i].info);
+    }
+
+    printf("Allocator stress test complete: %zu operations, %zu live allocations cleaned up\n", totalOps, liveCount);
+    printf("=== Extended allocator tests passed ===\n\n");
+}
 //=============================================================================
 
 //===TESTS=====================================================================
 void test_run_data_structures() {
     printf("=== Running data structure tests ===\n");
     internal_run_allocator_tests();
+    internal_run_allocator_tests_rand();
     internal_run_fixed_array_tests();
-    core_assert_msg(mem_alloc_table_empty(), "err: memory leaks");
     printf("=== All data structure tests completed ===\n");
 }
 //=============================================================================

@@ -37,7 +37,7 @@ static void internal_run_bitarray_util_tests(){
     printf("=== Setting a single bit at index 5 ===\n");
     bitarray_set_bit(&bitarray.header, 5);
     bitarray_print(&bitarray.header);
-    core_assert(bitarray_is_bit_set(&bitarray.header, 5));
+    core_assert(bitarray_check_bit(&bitarray.header, 5));
     core_assert(bitarray_count_set_bits(&bitarray.header) == 1);
     core_assert(bitarray_count_unset_bits(&bitarray.header) == 255);
     core_assert(bitarray_count_trailing_zeros(&bitarray.header) == 5);
@@ -46,24 +46,24 @@ static void internal_run_bitarray_util_tests(){
     printf("=== Clearing the bit at index 5 ===\n");
     bitarray_clear_bit(&bitarray.header, 5);
     bitarray_print(&bitarray.header);
-    core_assert(!bitarray_is_bit_set(&bitarray.header, 5));
+    core_assert(!bitarray_check_bit(&bitarray.header, 5));
     core_assert(bitarray_count_set_bits(&bitarray.header) == 0);
     core_assert(bitarray_count_trailing_zeros(&bitarray.header) == 256);
 
     printf("=== Toggling bit 100 on and off ===\n");
     bitarray_toggle_bit(&bitarray.header, 100);
     bitarray_print(&bitarray.header);
-    core_assert(bitarray_is_bit_set(&bitarray.header, 100));
+    core_assert(bitarray_check_bit(&bitarray.header, 100));
     bitarray_toggle_bit(&bitarray.header, 100);
     bitarray_print(&bitarray.header);
-    core_assert(!bitarray_is_bit_set(&bitarray.header, 100));
+    core_assert(!bitarray_check_bit(&bitarray.header, 100));
 
     printf("=== Setting a bit range [64..128] ===\n");
     bitarray_set_bit_range(&bitarray.header, 64, 128);
     bitarray_print(&bitarray.header);
     for (size_t i = 64; i < 128; ++i)
     {
-        core_assert(bitarray_is_bit_set(&bitarray.header, i));
+        core_assert(bitarray_check_bit(&bitarray.header, i));
     }
     core_assert(bitarray_count_set_bits(&bitarray.header) == 64);
 
@@ -72,7 +72,7 @@ static void internal_run_bitarray_util_tests(){
     bitarray_print(&bitarray.header);
     for (size_t i = 80; i < 96; ++i)
     {
-        core_assert(!bitarray_is_bit_set(&bitarray.header, i));
+        core_assert(!bitarray_check_bit(&bitarray.header, i));
     }
     core_assert(bitarray_count_set_bits(&bitarray.header) == 48);
 
@@ -100,7 +100,7 @@ static void internal_test_bitarray_ranges(){
     bitarray_set_bit_range(&bitarray.header, 0, 256);
     bitarray_print(&bitarray.header);
     for (size_t i = 0; i < 256; ++i){
-        core_assert(bitarray_is_bit_set(&bitarray.header, i));
+        core_assert(bitarray_check_bit(&bitarray.header, i));
     }
 
     printf("=== Clearing all bits ===\n");

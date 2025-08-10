@@ -20,7 +20,7 @@
 #define FEATURE_PLATFORM_WINDOWS FEATURE_ON
 #endif
 
-#define FEATURE_RUN_TESTS FEATURE_OFF
+#define FEATURE_RUN_TESTS FEATURE_ON
 
 //=============================================================================
 

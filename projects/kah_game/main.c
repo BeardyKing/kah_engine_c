@@ -36,6 +36,7 @@ void test_run_all(){
     }
     mem_cleanup();
     allocator_cleanup();
+    core_assert_msg(mem_alloc_table_empty(), "err: memory leaks");
 #endif
 }
 

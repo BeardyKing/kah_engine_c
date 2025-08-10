@@ -58,7 +58,7 @@ void bitarray_print(BitArrayHeader* header) {
 }
 
 
-bool bitarray_is_bit_set(BitArrayHeader* header, size_t bitIndex) {
+bool bitarray_check_bit(BitArrayHeader* header, size_t bitIndex) {
     core_assert(header != nullptr);
     core_assert(bitIndex < header->bitCount);
 
@@ -245,5 +245,28 @@ size_t bitarray_count_leading_zeros(BitArrayHeader* header) {
     }
     return totalBits;
 }
+
+size_t bitarray_find_first_unset_bit(BitArrayHeader* header) {
+    core_assert(header != nullptr);
+
+    uint64_t* buf = bitarray_buffer(header);
+    size_t totalBits = header->bitCount;
+    size_t wordCount = align_up(totalBits, KAH_BIT_ARRAY_ALIGNMENT) / KAH_BIT_ARRAY_ALIGNMENT;
+
+    for (size_t i = 0; i < wordCount; ++i) {
+        if (buf[i] != UINT64_MAX) {
+            uint64_t inverted = ~buf[i];
+            size_t bitOffset = u64_count_trailing_zeros(inverted);
+            size_t bitIndex = (i * KAH_BIT_ARRAY_ALIGNMENT) + bitOffset;
+
+            if (bitIndex < totalBits) {
+                return bitIndex;
+            }
+        }
+    }
+    core_assert_msg(false, "no free bits");
+    return UINT64_MAX;
+}
+
 
 //=============================================================================

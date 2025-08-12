@@ -4,6 +4,7 @@
 //===FEATURES==================================================================
 #define FEATURE_ON 1
 #define FEATURE_OFF 0
+#define CHECK_FEATURE(cond) _FEATURE_BOOL_TO_FEATURE(cond)
 
 #if defined(_WIN32) || defined(_WIN64)
 #define FEATURE_PLATFORM_WINDOWS FEATURE_ON
@@ -28,8 +29,6 @@
 #define _FEATURE_BOOL_TO_FEATURE_IMPL(x) _FEATURE_##x
 #define _FEATURE_1 FEATURE_ON
 #define _FEATURE_0 FEATURE_OFF
-
-#define CHECK_FEATURE(cond) _FEATURE_BOOL_TO_FEATURE(cond)
 //=============================================================================
 
 //===COMPILER==================================================================

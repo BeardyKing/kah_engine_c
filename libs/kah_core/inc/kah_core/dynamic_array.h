@@ -28,7 +28,7 @@ void  dynamic_array_resize_truncate(Allocator allocator, DynamicArray* array, ui
 
 //===INIT/SHUTDOWN=============================================================
 DynamicArray dynamic_array_create(Allocator allocator, uint32_t typeSize, uint32_t count);
-void dynamic_array_cleanup(Allocator allocator, DynamicArray* array);
+void         dynamic_array_cleanup(Allocator allocator, DynamicArray* array);
 //=============================================================================
 
 #endif //DYNAMIC_ARRAY_H

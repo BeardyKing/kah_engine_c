@@ -22,7 +22,7 @@ void* fixed_array_get(FixedArray* fixedArray, uint32_t index);
 
 //===INIT/SHUTDOWN=============================================================
 FixedArray fixed_array_create(Allocator allocator, uint32_t typeSize, uint32_t count);
-void fixed_array_cleanup(Allocator allocator, FixedArray* array);
+void       fixed_array_cleanup(Allocator allocator, FixedArray* array);
 //=============================================================================
 
 #endif //FIXED_ARRAY_H

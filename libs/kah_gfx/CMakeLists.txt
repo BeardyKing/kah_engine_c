@@ -32,8 +32,6 @@ endif()
 target_include_directories(kah_gfx
         PUBLIC inc
         PRIVATE src
-
-#        PRIVATE ${VulkanMemoryAllocator_SOURCE_DIR}/include
 )
 
 

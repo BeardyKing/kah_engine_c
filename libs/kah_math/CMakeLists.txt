@@ -8,6 +8,7 @@ add_library(kah_math
 
         src/utils.c
         src/vec4..c
+        inc/kah_math/defines.h
 )
 
 target_include_directories(kah_math

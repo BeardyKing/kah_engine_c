@@ -9,7 +9,7 @@
 //=============================================================================
 
 //===INTERNAL==================================================================
-__forceinline void internal_set_last_word_bits(uint64_t* word, size_t startOffset, size_t endOffset) {
+static CORE_FORCE_INLINE void internal_set_last_word_bits(uint64_t* word, size_t startOffset, size_t endOffset) {
     if (endOffset == 0) {
         *word = UINT64_MAX;
     } else {
@@ -17,7 +17,7 @@ __forceinline void internal_set_last_word_bits(uint64_t* word, size_t startOffse
     }
 }
 
-__forceinline void internal_clear_last_word_bits(uint64_t* word, size_t startOffset, size_t endOffset) {
+static CORE_FORCE_INLINE void internal_clear_last_word_bits(uint64_t* word, size_t startOffset, size_t endOffset) {
     if (endOffset == 0) {
         *word = 0;
     } else {

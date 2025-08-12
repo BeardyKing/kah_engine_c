@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+
+#if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
+#include <windows.h>
+#endif
 //=============================================================================
 
 //===STRUCTS_INTERNAL==========================================================
@@ -34,6 +38,7 @@ static AllocTable s_allocationTable = {};
 
 static ArenaData* s_arenaData = nullptr;
 static AllocInfo* s_arenaAllocInfo = nullptr;
+static size_t s_pageSize = 0;
 //=============================================================================
 
 //===INTERNAL==================================================================
@@ -59,21 +64,106 @@ uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
 }
 
 #if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
-static void* internal_page_alloc(size_t inBufferSize){ core_not_implemented(); return nullptr; }
-void internal_page_realloc(AllocInfo* allocInfo, size_t inBufferSize){ core_not_implemented(); }
-static void internal_page_free(AllocInfo* allocInfo){ core_not_implemented(); }
+static CORE_FORCE_INLINE void* internal_virtual_reserve_and_commit_win32(size_t reserveSize, size_t commitSize){
+    core_assert(aligned_to(reserveSize, mem_page_size()));
+    core_assert(aligned_to(commitSize, sizeof(uint64_t)));
+    core_assert(commitSize <= reserveSize);
+
+    void* reserved = VirtualAlloc(NULL, reserveSize, MEM_RESERVE, PAGE_NOACCESS);
+    if (reserved == nullptr) {
+        core_assert_msg(false, "VirtualAlloc reserve failed");
+        return nullptr;
+    }
+
+    void* committed = VirtualAlloc(reserved, commitSize, MEM_COMMIT, PAGE_READWRITE);
+    if (committed == nullptr) {
+        VirtualFree(reserved, 0, MEM_RELEASE); // Clean up reservation
+        core_assert_msg(false, "VirtualAlloc commit failed");
+        return nullptr;
+    }
+
+    return reserved;
+}
+
+static CORE_FORCE_INLINE AllocInfo* internal_page_alloc(size_t inBufferSize){
+    core_assert(aligned_to(inBufferSize, mem_word_size()));
+    inBufferSize = align_up(inBufferSize, mem_word_size()); // for for builds without asserts
+
+    const size_t pageSize = mem_page_size();
+    const size_t alignedReserveSize = align_up(inBufferSize, pageSize);
+
+    void* reserved = internal_virtual_reserve_and_commit_win32(alignedReserveSize, inBufferSize);
+    if (reserved == nullptr) {
+        return nullptr;
+    }
+
+    const uint32_t tableIndex = alloc_info_get_next_free_index();
+    if (tableIndex == ALLOC_TABLE_INVALID_INDEX) {
+        VirtualFree(reserved, 0, MEM_RELEASE);
+        return nullptr;
+    }
+
+    AllocInfo* outInfo = &s_allocationTable.infos[tableIndex];
+    bitarray_set_bit(&s_allocationTable.infoInUse.header, tableIndex);
+
+    *outInfo = (AllocInfo){
+        .bufferAddress   = reserved,
+        .commitedMemory  = inBufferSize,
+        .reservedMemory  = alignedReserveSize
+    };
+
+    return outInfo;
+}
+
+static CORE_FORCE_INLINE void internal_page_realloc(AllocInfo* allocInfo, size_t inBufferSize){
+    core_assert(allocInfo != NULL);
+    core_assert(allocInfo->bufferAddress != NULL);
+    core_assert(aligned_to(inBufferSize, mem_word_size()));
+    inBufferSize = align_up(inBufferSize, mem_word_size());
+
+    if (inBufferSize <= allocInfo->commitedMemory) {
+        return;
+        // TODO: instead of just earlying out I should de-commit these pages.
+    }
+
+    size_t base = (uintptr_t)allocInfo->bufferAddress;
+    size_t additionalSize = inBufferSize - allocInfo->commitedMemory;
+    size_t commitStart = base + allocInfo->commitedMemory;
+
+    core_assert_msg(inBufferSize <= allocInfo->reservedMemory,"Realloc failed: size exceeds reserved memory");
+
+    void* result = VirtualAlloc((void*)commitStart, additionalSize, MEM_COMMIT, PAGE_READWRITE);
+    core_assert_msg(result != nullptr, "VirtualAlloc commit (realloc) failed");
+
+    allocInfo->commitedMemory = inBufferSize;
+}
+
+static CORE_FORCE_INLINE void internal_page_free(AllocInfo* allocInfo){
+    core_assert(allocInfo != nullptr);
+    core_assert(allocInfo->bufferAddress != nullptr);
+
+    const uint32_t tableIndex = alloc_info_find_index(allocInfo);
+    core_assert_msg(tableIndex != ALLOC_TABLE_INVALID_INDEX, "Page free: AllocInfo not found in table");
+
+    WINBOOL result = VirtualFree(allocInfo->bufferAddress, 0, MEM_RELEASE);
+    core_assert_msg(result != 0, "VirtualFree failed");
+
+    *allocInfo = (AllocInfo){};
+    bitarray_clear_bit(&s_allocationTable.infoInUse.header, tableIndex);
+}
+
 #endif
 
 #if CHECK_FEATURE(FEATURE_PLATFORM_LINUX)
-static void* internal_page_alloc(size_t inBufferSize){ core_not_implemented(); return nullptr; }
-void internal_page_realloc(AllocInfo* allocInfo, size_t inBufferSize){ core_not_implemented(); }
-static void internal_page_free(AllocInfo* allocInfo){ core_not_implemented(); }
+static CORE_FORCE_INLINE void* internal_page_alloc(size_t inBufferSize){ core_not_implemented(); return nullptr; }
+static CORE_FORCE_INLINE void internal_page_realloc(AllocInfo* allocInfo, size_t inBufferSize){ core_not_implemented(); }
+static CORE_FORCE_INLINE void internal_page_free(AllocInfo* allocInfo){ core_not_implemented(); }
 #endif
 
 #if CHECK_FEATURE(FEATURE_PLATFORM_APPLE)
-static void* internal_page_alloc(size_t inBufferSize){ core_not_implemented(); return nullptr; }
-void internal_page_realloc(AllocInfo* allocInfo, size_t inBufferSize){ core_not_implemented(); }
-static void internal_page_free(AllocInfo* allocInfo){ core_not_implemented(); }
+static CORE_FORCE_INLINE void* internal_page_alloc(size_t inBufferSize){ core_not_implemented(); return nullptr; }
+static CORE_FORCE_INLINE void internal_page_realloc(AllocInfo* allocInfo, size_t inBufferSize){ core_not_implemented(); }
+static CORE_FORCE_INLINE void internal_page_free(AllocInfo* allocInfo){ core_not_implemented(); }
 #endif
 //=============================================================================
 
@@ -190,6 +280,10 @@ void mem_dump_info(){
     }
 }
 
+size_t mem_page_size(){
+    core_assert(s_pageSize != 0);
+    return s_pageSize;
+}
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================
@@ -198,6 +292,15 @@ void mem_create(){
         s_allocationTable = (AllocTable){.infoInUse.header.bitCount = 256, .infoInUse.buf = {0ULL, 0ULL, 0ULL, 0ULL}};
         s_arenaAllocInfo = mem_cstd_alloc(sizeof(ArenaData));
         s_arenaData = (ArenaData*)s_arenaAllocInfo->bufferAddress;
+    }
+    {
+#if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
+        SYSTEM_INFO sysInfo;
+        GetSystemInfo(&sysInfo);
+        s_pageSize = sysInfo.dwPageSize; // is 4KiB on most windows targets.
+#else
+        s_pageSize = 4 * KAH_KiB; //TODO: other platforms / cvar override for pagesize
+#endif
     }
 }
 

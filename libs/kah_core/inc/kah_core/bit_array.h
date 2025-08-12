@@ -31,7 +31,7 @@ struct BitArrayDynamic{ BitArrayHeader header; uint64_t* buf;     } typedef BitA
 //=============================================================================
 
 //===API=======================================================================
-__forceinline uint64_t* bitarray_buffer(BitArrayHeader* header) { return (uint64_t*)(header + 1); }
+CORE_FORCE_INLINE uint64_t* bitarray_buffer(BitArrayHeader* header) { return (uint64_t*)(header + 1); }
 
 bool   bitarray_check_bit(BitArrayHeader* header, size_t bitIndex);
 void   bitarray_set_bit(BitArrayHeader* header, size_t bitIndex);
@@ -48,15 +48,15 @@ void   bitarray_print(BitArrayHeader* header);
 //=============================================================================
 
 //===BITSET_UTILS==============================================================
-__forceinline bool   u64_is_bit_set(uint64_t word, size_t bitIndex)                     { core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); return (word & (1ULL << bitIndex)) != 0; }
-__forceinline void   u64_set_bit(uint64_t* word, size_t bitIndex)                       { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word |= (1ULL << bitIndex); }
-__forceinline void   u64_clear_bit(uint64_t* word, size_t bitIndex)                     { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word &= ~(1ULL << bitIndex); }
-__forceinline void   u64_toggle_bit(uint64_t* word, size_t bitIndex)                    { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word ^= (1ULL << bitIndex); }
-__forceinline size_t u64_count_set_bits(uint64_t word)                                  { return __builtin_popcountll(word);}
-__forceinline size_t u64_count_unset_bits(uint64_t word)                                { return KAH_BIT_ARRAY_ALIGNMENT - u64_count_set_bits(word);}
-__forceinline size_t u64_count_trailing_zeros(uint64_t word)                            { return word ? __builtin_ctzll(word) : KAH_BIT_ARRAY_ALIGNMENT; }
-__forceinline size_t u64_count_leading_zeros(uint64_t word)                             { return word ? __builtin_clzll(word) : KAH_BIT_ARRAY_ALIGNMENT; }
-__forceinline void   u64_clear_bit_range(uint64_t* word, size_t start, size_t end)      { core_assert(word != NULL); core_assert(start <= end); core_assert(end <= KAH_BIT_ARRAY_ALIGNMENT); if (start == end) { return; } if (start == 0 && end == 64) { *word = 0; } else { uint64_t mask = ((1ULL << (end - start)) - 1) << start; *word &= ~mask; } }
-__forceinline void   u64_set_bit_range(uint64_t* word, size_t start, size_t end)        { core_assert(word != NULL); core_assert(start <= end); core_assert(end <= KAH_BIT_ARRAY_ALIGNMENT); if (start == end) { return; } if (start == 0 && end == 64) { *word = UINT64_MAX; } else { uint64_t mask = ((1ULL << (end - start)) - 1) << start; *word |= mask; } }
+CORE_FORCE_INLINE bool   u64_is_bit_set(uint64_t word, size_t bitIndex)                     { core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); return (word & (1ULL << bitIndex)) != 0; }
+CORE_FORCE_INLINE void   u64_set_bit(uint64_t* word, size_t bitIndex)                       { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word |= (1ULL << bitIndex); }
+CORE_FORCE_INLINE void   u64_clear_bit(uint64_t* word, size_t bitIndex)                     { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word &= ~(1ULL << bitIndex); }
+CORE_FORCE_INLINE void   u64_toggle_bit(uint64_t* word, size_t bitIndex)                    { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word ^= (1ULL << bitIndex); }
+CORE_FORCE_INLINE size_t u64_count_set_bits(uint64_t word)                                  { return __builtin_popcountll(word);}
+CORE_FORCE_INLINE size_t u64_count_unset_bits(uint64_t word)                                { return KAH_BIT_ARRAY_ALIGNMENT - u64_count_set_bits(word);}
+CORE_FORCE_INLINE size_t u64_count_trailing_zeros(uint64_t word)                            { return word ? __builtin_ctzll(word) : KAH_BIT_ARRAY_ALIGNMENT; }
+CORE_FORCE_INLINE size_t u64_count_leading_zeros(uint64_t word)                             { return word ? __builtin_clzll(word) : KAH_BIT_ARRAY_ALIGNMENT; }
+CORE_FORCE_INLINE void   u64_clear_bit_range(uint64_t* word, size_t start, size_t end)      { core_assert(word != NULL); core_assert(start <= end); core_assert(end <= KAH_BIT_ARRAY_ALIGNMENT); if (start == end) { return; } if (start == 0 && end == 64) { *word = 0; } else { uint64_t mask = ((1ULL << (end - start)) - 1) << start; *word &= ~mask; } }
+CORE_FORCE_INLINE void   u64_set_bit_range(uint64_t* word, size_t start, size_t end)        { core_assert(word != NULL); core_assert(start <= end); core_assert(end <= KAH_BIT_ARRAY_ALIGNMENT); if (start == end) { return; } if (start == 0 && end == 64) { *word = UINT64_MAX; } else { uint64_t mask = ((1ULL << (end - start)) - 1) << start; *word |= mask; } }
 //=============================================================================
 #endif //BIT_ARRAY_H

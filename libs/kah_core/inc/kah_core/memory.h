@@ -2,12 +2,14 @@
 #define ALLOCATOR_ARENA_H
 
 //===INCLUDES==================================================================
+#include <kah_core/defines.h>
 #include <kah_core/allocators.h>
 
 #include <stddef.h>
 //=============================================================================
 
 //===API=======================================================================
+
 AllocInfo*  mem_cstd_alloc(size_t inBufferSize);
 void        mem_cstd_realloc(AllocInfo* allocInfo, size_t inBufferSize);
 void        mem_cstd_free(AllocInfo* allocInfo);
@@ -21,8 +23,12 @@ AllocInfo*  mem_page_alloc(size_t inBufferSize);
 void        mem_page_realloc(AllocInfo* allocInfo, size_t inBufferSize);
 void        mem_page_free(AllocInfo* allocInfo);
 
-bool mem_alloc_table_empty();
-void mem_dump_info();
+CORE_FORCE_INLINE size_t mem_word_size() { return sizeof(void*); }
+size_t                   mem_page_size();
+
+bool   mem_alloc_table_empty();
+void   mem_dump_info();
+
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================

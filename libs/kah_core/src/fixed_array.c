@@ -6,14 +6,13 @@
 //=============================================================================
 
 //===INTERNAL==================================================================
-__forceinline void* internal_get_memory_at_index(FixedArray* fixedArray, uint32_t index) {
+static CORE_FORCE_INLINE void* internal_get_memory_at_index(FixedArray* fixedArray, uint32_t index) {
     if (index >= fixedArray->count) {
         core_assert(false);
         return nullptr;
     }
     return &((char*)fixedArray->info->bufferAddress)[fixedArray->typeSize * index];
 }
-
 //=============================================================================
 
 //===API=======================================================================

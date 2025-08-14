@@ -27,6 +27,8 @@ add_library(kah_core
         inc/kah_core/tests/test_data_structures.h
         inc/kah_core/dynamic_array.h
         src/dynamic_array.c
+        inc/kah_core/c_string.h
+        src/c_string.c
 )
 
 target_include_directories(kah_core

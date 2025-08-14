@@ -19,8 +19,11 @@
 #define ALLOC_TABLE_INVALID_INDEX UINT32_MAX
 
 #define MEM_ARENA_BUFFER_SIZE ( 1 * KAH_MiB )
+#define MEM_MAX_ARENA_ALLOCATIONS 256
 struct ArenaData
 {
+    AllocInfo infos[MEM_MAX_ARENA_ALLOCATIONS];
+    uint32_t infoIndex;
     char data[MEM_ARENA_BUFFER_SIZE];
     size_t current;
 } typedef ArenaData;
@@ -228,17 +231,39 @@ void mem_cstd_realloc(AllocInfo* allocInfo, size_t inBufferSize){
 AllocInfo* mem_arena_alloc(size_t inBufferSize){
     core_assert(s_arenaData != nullptr);
     core_assert(s_arenaData->current + inBufferSize < MEM_ARENA_BUFFER_SIZE);
-    void* outData = &s_arenaData->data[s_arenaData->current];
+    core_assert(s_arenaData->infoIndex + 1 < MEM_MAX_ARENA_ALLOCATIONS);
+
+    AllocInfo* info = &s_arenaData->infos[s_arenaData->infoIndex];
+    *info = (AllocInfo){
+        .bufferAddress = &s_arenaData->data[s_arenaData->current],
+        .commitedMemory = inBufferSize,
+        .reservedMemory = inBufferSize
+    };
+
     s_arenaData->current += inBufferSize;
-    return outData;
+    s_arenaData->infoIndex++;
+    return info;
 }
 
 void mem_arena_free_assert_on_call(AllocInfo* /*bufferAddres*/){
+    //TODO: if AllocInfo bufffer address == current allocinfo -1 we could undo that allocation, depending on the free order we could in theory free the entire arena stack
+    //      but if allocInfo isn't the last entry -1 just ignore the free.
     core_assert_msg(false, "arena does not implement free, call mem_arena_reset at the end of the frame");
 }
 
-void mem_arena_realloc_assert_on_call(AllocInfo* /*allocInfo*/, size_t /*inBufferSize*/){
-    core_assert_msg(false, "arena does not implement realloc, call mem_arena_reset at the end of the frame");
+void mem_arena_realloc(AllocInfo* allocInfo, size_t inBufferSize){
+    core_assert(s_arenaData != nullptr);
+    core_assert(allocInfo != nullptr);
+    core_assert(s_arenaData->infoIndex != 0);
+
+    if(allocInfo->bufferAddress == &s_arenaData->infos[s_arenaData->infoIndex - 1].bufferAddress){
+        int64_t bufferChangeAmount = inBufferSize - allocInfo->commitedMemory; //may be -ve
+        allocInfo->commitedMemory = inBufferSize;
+        allocInfo->reservedMemory = inBufferSize;
+        s_arenaData->current += bufferChangeAmount;
+        return;
+    }
+    core_assert_msg(false, "arena only implement realloc on the last alloc entry");
 }
 
 void mem_arena_reset(){

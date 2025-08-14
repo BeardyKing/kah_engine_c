@@ -24,7 +24,7 @@ void allocator_create() {
 
     s_allocators.arena = (Allocator){
         .alloc = mem_arena_alloc,
-        .realloc = mem_arena_realloc_assert_on_call,
+        .realloc = mem_arena_realloc,
         .free = mem_arena_free_assert_on_call,
     };
 

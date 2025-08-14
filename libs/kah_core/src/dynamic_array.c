@@ -36,13 +36,19 @@ void* dynamic_array_get(DynamicArray* array, uint32_t index){
     return internal_get_memory_at_index(array, index);
 }
 
+void* dynamic_array_buffer(DynamicArray* array){
+    core_assert(array != nullptr);
+    core_assert(array->info->bufferAddress != nullptr);
+    return array->info->bufferAddress;
+}
+
 void dynamic_array_push(Allocator allocator, DynamicArray* array, void* inData){
     core_assert(inData != nullptr);
     core_assert(array != nullptr);
     core_assert(array->info->bufferAddress != nullptr);
     if (array->current + 1 > array->count){
         // TODO: Consider the resize scalar 1.5f be stored as a global so it can be modified.
-        dynamic_array_resize(allocator, array, array->count * 2);
+        dynamic_array_resize(allocator, array, array->count == 0 ? 1 : array->count * 2 );
     }
     void* dest = internal_get_memory_at_index(array, array->current);
     memcpy(dest, inData, array->typeSize);
@@ -102,7 +108,7 @@ void dynamic_array_resize_truncate(Allocator allocator, DynamicArray* array, uin
 void dynamic_array_resize(Allocator allocator, DynamicArray* array, uint32_t count){
     core_assert(array != nullptr);
     core_assert(array->info->bufferAddress != nullptr);
-    core_assert_msg(array->current < count, "err: resize down still has data in array");
+    core_assert_msg(array->current <= count, "err: resize down still has data in array");
     core_assert(count > 0);
     dynamic_array_resize_truncate(allocator, array, count);
 }
@@ -111,8 +117,8 @@ void dynamic_array_resize(Allocator allocator, DynamicArray* array, uint32_t cou
 
 //===INIT/SHUTDOWN=============================================================
 
-DynamicArray dynamic_array_create(Allocator allocator, uint32_t typeSize, uint32_t count){
-    const size_t totalAllocSize = typeSize * count;
+DynamicArray dynamic_array_create(Allocator allocator, uint32_t typeSize, uint32_t reserveCount){
+    const size_t totalAllocSize = typeSize * reserveCount;
     AllocInfo* info = allocator.alloc(totalAllocSize);
     core_assert_msg(info->bufferAddress != nullptr, "err: failed to created dynamic array\n");
 
@@ -122,7 +128,7 @@ DynamicArray dynamic_array_create(Allocator allocator, uint32_t typeSize, uint32
 
     return (DynamicArray){
         .info = info,
-        .count = count,
+        .count = reserveCount,
         .current = 0,
         .typeSize = typeSize
     };

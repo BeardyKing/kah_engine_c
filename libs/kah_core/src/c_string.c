@@ -67,9 +67,9 @@ bool c_str_extract_file_name(const char *inPath, char *outFilename) {
         return false;
     }
 
-    const char *lastSlash = c_str_search_reverse(inPath, "/");
+    const char *lastSlash = c_str_search_reverse((char*)inPath, "/");
     if (lastSlash == nullptr) {
-        lastSlash = c_str_search_reverse(inPath, "\\");
+        lastSlash = c_str_search_reverse((char*)inPath, "\\");
         if (lastSlash == nullptr) {
             return false;
         }

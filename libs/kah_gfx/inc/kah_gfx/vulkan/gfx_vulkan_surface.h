@@ -6,7 +6,7 @@
 //=============================================================================
 
 //===API=======================================================================
-void gfx_create_surface(void *windowHandle, const VkInstance *instance, VkSurfaceKHR *outSurface);
+void gfx_surface_create(void *windowHandle, const VkInstance *instance, VkSurfaceKHR *outSurface);
 //=============================================================================
 
 #endif //GFX_VULKAN_SURFACE_H

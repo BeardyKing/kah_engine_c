@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef KAH_CORE_UTILS_H
+#define KAH_CORE_UTILS_H
 
 //===INCLUDES==================================================================
 #include <kah_core/assert.h>
@@ -77,4 +77,4 @@ CORE_FORCE_INLINE bool   aligned_to_ptr(void* p, size_t alignment ) { core_asser
 //=============================================================================
 
 
-#endif //UTILS_H
+#endif //KAH_CORE_UTILS_H

@@ -1,10 +1,14 @@
 //===INCLUDES==================================================================
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan.h>
+#include <kah_gfx/vulkan/gfx_vulkan_surface.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
 #include <kah_core/c_string.h>
+#include <kah_core/utils.h>
+
+#include <kah_math/utils.h>
 
 #include <stdio.h>
 //=============================================================================
@@ -18,16 +22,30 @@ static struct GfxBackend{
     VkPhysicalDevice physicalDevice;
     VkDevice device;
     VkInstance instance;
+    VkSurfaceKHR surface;
     VkAllocationCallbacks* allocCallback;
+
+    VkSampleCountFlagBits sampleCount;
+
+    VkPhysicalDeviceProperties deviceProperties;
+    VkPhysicalDeviceFeatures deviceFeatures;
+    VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
 
     DynamicArray supportedInstanceExtensions;
     DynamicArray supportedValidationLayers;
+    DynamicArray supportedphysicalDevices;
 } s_gfx;
 
 
 static struct GfxDebug {
     VkDebugUtilsMessengerEXT debugUtilsMessenger;
 } s_gfxDebug = {};
+
+static struct GfxUserArguments {
+    uint32_t selectedPhysicalDeviceIndex;
+    bool vsync;
+    VkSampleCountFlagBits msaa;
+} s_userArguments = {};
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
@@ -52,14 +70,21 @@ Allocator gfx_allocator_arena(){ return allocators()->arena;}   // TODO: replace
 static void gfx_create_data_structures(){
     s_gfx = (struct GfxBackend){};
     s_gfxDebug = (struct GfxDebug){};
+    s_userArguments = (struct GfxUserArguments){ //TODO: replace with quake style CVAR system
+        .selectedPhysicalDeviceIndex = 0,
+        .vsync = true,
+        .msaa = VK_SAMPLE_COUNT_1_BIT
+    };
 
     s_gfx.supportedInstanceExtensions = dynamic_array_create(gfx_allocator(), sizeof(VkExtensionProperties),0);
     s_gfx.supportedValidationLayers = dynamic_array_create(gfx_allocator(), sizeof(VkLayerProperties), 0);
+    s_gfx.supportedphysicalDevices = dynamic_array_create(gfx_allocator(), sizeof(VkPhysicalDevice), 0);
 }
 
 static void gfx_cleanup_data_structures(){
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedInstanceExtensions);
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedValidationLayers);
+    dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedphysicalDevices);
 }
 
 static void gfx_volk_create(){
@@ -246,11 +271,121 @@ static void gfx_debug_callbacks_create() {
     vkCreateDebugUtilsMessengerEXT(s_gfx.instance, &messengerCreateInfo, s_gfx.allocCallback, &s_gfxDebug.debugUtilsMessenger);
 }
 
-void gfx_debug_callbacks_cleanup() {
+static void gfx_debug_callbacks_cleanup() {
     core_assert_msg(s_gfxDebug.debugUtilsMessenger != VK_NULL_HANDLE, "err: debug utils messenger has already been destroyed");
     vkDestroyDebugUtilsMessengerEXT(s_gfx.instance, s_gfxDebug.debugUtilsMessenger, s_gfx.allocCallback);
     s_gfxDebug.debugUtilsMessenger = VK_NULL_HANDLE;
 }
+
+static const char* device_type_to_string(VkPhysicalDeviceType type) {
+    switch (type) {
+    case VK_PHYSICAL_DEVICE_TYPE_OTHER: return "Other";
+    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "Integrated GPU";
+    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return "Discrete GPU";
+    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "Virtual GPU";
+    case VK_PHYSICAL_DEVICE_TYPE_CPU: return "CPU";
+    default: return "Unknown";
+    }
+    return "Unknown";
+}
+
+static void debug_print_supported_physical_devices_info(){
+    const VkPhysicalDevice* physicalDevices = dynamic_array_buffer(&s_gfx.supportedphysicalDevices);
+
+    printf("=== PHYSICAL DEVICE INFO ======\n\n");
+    printf("Found %u Vulkan device(s):\n", s_gfx.supportedphysicalDevices.count);
+    for (uint32_t i = 0; i < s_gfx.supportedphysicalDevices.count; ++i) {
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(physicalDevices[i], &props);
+
+        VkPhysicalDeviceMemoryProperties memProps;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevices[i], &memProps);
+
+        VkDeviceSize totalDeviceLocalMem = 0;
+        for (uint32_t j = 0; j < memProps.memoryHeapCount; ++j) {
+            if (memProps.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+                totalDeviceLocalMem += memProps.memoryHeaps[j].size;
+            }
+        }
+
+        printf("Device %u: %s\n", i, props.deviceName);
+        printf("\tType   : %s\n", device_type_to_string(props.deviceType));
+        printf("\tMemory : %.2f MiB of device-local memory\n", (float)totalDeviceLocalMem / (float)KAH_MiB);
+        printf("\n");
+    }
+    printf("===============================\n");
+}
+
+static void debug_print_selected_physical_device_info(){
+    VkDeviceSize totalDeviceLocalMem = 0;
+    for (uint32_t j = 0; j < s_gfx.deviceMemoryProperties.memoryHeapCount; ++j) {
+        if (s_gfx.deviceMemoryProperties.memoryHeaps[j].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+            totalDeviceLocalMem += s_gfx.deviceMemoryProperties.memoryHeaps[j].size;
+        }
+    }
+
+    const uint32_t apiVersionMajor = VK_API_VERSION_MAJOR(s_gfx.deviceProperties.apiVersion);
+    const uint32_t apiVersionMinor = VK_API_VERSION_MINOR(s_gfx.deviceProperties.apiVersion);
+    const uint32_t apiVersionPatch = VK_API_VERSION_PATCH(s_gfx.deviceProperties.apiVersion);
+
+    const uint32_t driverVersionMajor = VK_API_VERSION_MAJOR(s_gfx.deviceProperties.driverVersion);
+    const uint32_t driverVersionMinor = VK_API_VERSION_MINOR(s_gfx.deviceProperties.driverVersion);
+    const uint32_t driverVersionPatch = VK_API_VERSION_PATCH(s_gfx.deviceProperties.driverVersion);
+
+    const char *deviceType = device_type_to_string(s_gfx.deviceProperties.deviceType);
+
+    printf("Selected physical device\n");
+    printf("Name:\t\t%s \nType:\t\t%s \nMemory:\t\t%.2f MiB \nHeap Count:\t%u \nVersion:\t%u.%u.%u \nDriver: \t%u.%u.%u\n",
+             s_gfx.deviceProperties.deviceName,
+             deviceType,
+             totalDeviceLocalMem / (float)KAH_MiB,
+             s_gfx.deviceMemoryProperties.memoryHeapCount,
+             apiVersionMajor,
+             apiVersionMinor,
+             apiVersionPatch,
+             driverVersionMajor,
+             driverVersionMinor,
+             driverVersionPatch
+    );
+}
+
+static VkSampleCountFlagBits set_target_sample_count(const VkPhysicalDeviceProperties deviceProperties, VkSampleCountFlagBits target) {
+    VkSampleCountFlags supportedSampleCount = min_i32(deviceProperties.limits.framebufferColorSampleCounts, deviceProperties.limits.framebufferDepthSampleCounts);
+    return (supportedSampleCount & target) ? target : VK_SAMPLE_COUNT_1_BIT;
+}
+
+static void gfx_physical_device_create(){
+    core_assert(s_gfx.supportedphysicalDevices.current == 0);
+    vkEnumeratePhysicalDevices(s_gfx.instance, &s_gfx.supportedphysicalDevices.current, nullptr);
+    core_assert_msg(s_gfx.supportedphysicalDevices.current != 0, "err: did not find any vulkan compatible physical devices");
+    dynamic_array_resize(gfx_allocator(),&s_gfx.supportedphysicalDevices, s_gfx.supportedphysicalDevices.current);
+
+    VkPhysicalDevice* physicalDevices = dynamic_array_buffer(&s_gfx.supportedphysicalDevices);
+    vkEnumeratePhysicalDevices(s_gfx.instance, &s_gfx.supportedphysicalDevices.count, physicalDevices);
+
+    debug_print_supported_physical_devices_info();
+
+    // TODO:GFX: Add fallback support for `best` GPU based on intended workload, if no argument is provided we fallback to device [0]
+    uint32_t selectedDevice = s_userArguments.selectedPhysicalDeviceIndex;
+    core_assert_msg(selectedDevice < s_gfx.supportedphysicalDevices.count, "err: selecting physical vulkan device that is out of range");
+    s_gfx.physicalDevice = physicalDevices[selectedDevice];
+
+    vkGetPhysicalDeviceProperties(s_gfx.physicalDevice, &s_gfx.deviceProperties);
+    s_gfx.sampleCount = set_target_sample_count(s_gfx.deviceProperties, s_userArguments.msaa);
+
+    vkGetPhysicalDeviceFeatures(s_gfx.physicalDevice, &s_gfx.deviceFeatures);
+    vkGetPhysicalDeviceMemoryProperties(s_gfx.physicalDevice, &s_gfx.deviceMemoryProperties);
+
+    debug_print_selected_physical_device_info();
+}
+
+static void gfx_surface_cleanup() {
+    // gfx_create_surface(...) exists in gfx_vulkan_surface.h / gfx_vulkan_surface_windows.cpp
+    core_assert_msg(s_gfx.surface != VK_NULL_HANDLE, "err: VkSurface has already been destroyed");
+    vkDestroySurfaceKHR(s_gfx.instance, s_gfx.surface, s_gfx.allocCallback);
+    s_gfx.surface = VK_NULL_HANDLE;
+}
+
 //=============================================================================
 
 //===API=======================================================================
@@ -258,20 +393,21 @@ void gfx_update(){}
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================
-void gfx_create(void* windowHandle)
-{
+void gfx_create(void* windowHandle){
     gfx_create_data_structures();
     gfx_volk_create();
     gfx_instance_create();
     gfx_debug_callbacks_create();
+    gfx_physical_device_create();
+    gfx_surface_create(windowHandle, &s_gfx.instance, &s_gfx.surface);
 
     VmaAllocatorCreateInfo info = {};
     // vma_create(info);
     printf("Vulkan(volk) version %d.%d.%d initialized.\n",VK_VERSION_MAJOR(s_gfx.instanceVersion),VK_VERSION_MINOR(s_gfx.instanceVersion),VK_VERSION_PATCH(s_gfx.instanceVersion));
 }
 
-void gfx_cleanup()
-{
+void gfx_cleanup(){
+    gfx_surface_cleanup();
     gfx_debug_callbacks_cleanup();
     gfx_instance_cleanup();
     // vma_cleanup();

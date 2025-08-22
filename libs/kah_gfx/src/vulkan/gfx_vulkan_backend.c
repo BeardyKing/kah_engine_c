@@ -83,6 +83,9 @@ do {                                                    \
     (newStruct)->pNext = (mainStruct)->pNext;           \
     (mainStruct)->pNext = (void*)(newStruct);           \
 } while (0)
+
+//HACK: 1.4 SDK is broken for me & fails on debug callbacks.
+#define FEATURE_GFX_VK_1_4 FEATURE_OFF
 //=============================================================================
 
 //===INTERNAL_FUNCTIONS========================================================
@@ -103,7 +106,9 @@ static void gfx_create_data_structures(){
         .features11 =               (VkPhysicalDeviceVulkan11Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES } ,
         .features12 =               (VkPhysicalDeviceVulkan12Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES } ,
         .features13 =               (VkPhysicalDeviceVulkan13Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES } ,
-        // .features14 =               (VkPhysicalDeviceVulkan14Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES } ,
+#if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
+        .features14 =               (VkPhysicalDeviceVulkan14Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES } ,
+#endif // #if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
         .swapchainFeatures =        (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT } ,
         .dynamicState1Features =    (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT } ,
         .dynamicState2Features =    (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT } ,
@@ -508,51 +513,55 @@ static void gfx_queues_create(){
         .pQueuePriorities = &graphicsQueuePriority
     };
 
-    DynamicArray usedDeviceExtensions = dynamic_array_create(gfx_allocator_arena(), sizeof(const char*), 10);
-    const char* swapChainName = gfx_find_supported_device_extension_name(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapChainName);
+    DynamicArray usedDeviceExtensions = dynamic_array_create(gfx_allocator_arena(), sizeof(const char*), 7);
 
+    const char* swapChainName        = gfx_find_supported_device_extension_name( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+    const char* dynamicRenderingName = gfx_find_supported_device_extension_name( VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME );
+    const char* pushDescriptor       = gfx_find_supported_device_extension_name( VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME );
+    const char* extDynamicState1     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME );
+    const char* extDynamicState2     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME );
+    const char* extDynamicState3     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME );
+    const char* swapchainMaintence1  = gfx_find_supported_device_extension_name( VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME );
+
+    s_gfxFeatures.deviceFeatures.pNext = &s_gfxFeatures.features11;
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,2,0)){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features12);
-    }
-    else {
-        // TODO: VK1.1 fallback support for descriptorIndexing & bufferDeviceAddress
     }
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features13);
     }
-    else {
-        const char* dynamicRenderingName = gfx_find_supported_device_extension_name(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
-        if( dynamicRenderingName ){
-            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
-            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
-        }
+#if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
+    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,4,0)){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features14);
     }
-    const char* pushDescriptor = gfx_find_supported_device_extension_name(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+#endif // #if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
+
+    if(swapChainName){
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapChainName);
+    }
     if(pushDescriptor){
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &pushDescriptor);
     }
-    const char* extDynamicState1 = gfx_find_supported_device_extension_name(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+    if(swapchainMaintence1){
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapchainMaintence1);
+    }
     if(extDynamicState1){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState1Features);
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState1);
     }
-    const char* extDynamicState2 = gfx_find_supported_device_extension_name(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME);
     if(extDynamicState2){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState2Features);
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState2);
     }
-    const char* extDynamicState3 = gfx_find_supported_device_extension_name(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
     if(extDynamicState3){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState3Features);
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState3);
     }
-    const char* swapchainMaintence1 = gfx_find_supported_device_extension_name(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
-    if(swapchainMaintence1){
-        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapchainMaintence1);
+    if( dynamicRenderingName && s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,3,0) ){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
     }
 
-    s_gfxFeatures.deviceFeatures.pNext = &s_gfxFeatures.features11;
     vkGetPhysicalDeviceFeatures2(s_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
     core_assert_msg(s_gfxFeatures.features12.descriptorIndexing, "err: Descriptor indexing is required");
     core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");

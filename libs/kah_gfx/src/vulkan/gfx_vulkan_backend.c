@@ -7,6 +7,7 @@
 #include <kah_core/dynamic_array.h>
 #include <kah_core/c_string.h>
 #include <kah_core/utils.h>
+#include <kah_core/bit_array.h>
 
 #include <kah_math/utils.h>
 
@@ -21,6 +22,7 @@ static struct GfxBackend{
 
     VkPhysicalDevice physicalDevice;
     VkDevice device;
+    VkQueue queue;
     VkInstance instance;
     VkSurfaceKHR surface;
     VkAllocationCallbacks* allocCallback;
@@ -34,8 +36,8 @@ static struct GfxBackend{
     DynamicArray supportedInstanceExtensions;
     DynamicArray supportedValidationLayers;
     DynamicArray supportedphysicalDevices;
-} s_gfx;
-
+    DynamicArray supportedDeviceExtensions;
+} s_gfx = {};
 
 static struct GfxDebug {
     VkDebugUtilsMessengerEXT debugUtilsMessenger;
@@ -46,6 +48,20 @@ static struct GfxUserArguments {
     bool vsync;
     VkSampleCountFlagBits msaa;
 } s_userArguments = {};
+
+static struct GfxFeatures{
+    VkPhysicalDeviceFeatures2 deviceFeatures;
+    VkPhysicalDeviceVulkan11Features features11;
+    VkPhysicalDeviceVulkan12Features features12;
+    VkPhysicalDeviceVulkan13Features features13;
+    // VkPhysicalDeviceVulkan14Features features14;
+
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainFeatures;
+    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicState1Features;
+    VkPhysicalDeviceExtendedDynamicState2FeaturesEXT dynamicState2Features;
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT dynamicState3Features;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
+} s_gfxFeatures = {};
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
@@ -61,6 +77,12 @@ constexpr VkDebugUtilsMessageTypeFlagsEXT KAH_VK_DEBUG_UTILS_MESSAGE_TYPE =
         VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
         VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
         VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+#define pnext_chain_push_front(mainStruct, newStruct)   \
+do {                                                    \
+    (newStruct)->pNext = (mainStruct)->pNext;           \
+    (mainStruct)->pNext = (void*)(newStruct);           \
+} while (0)
 //=============================================================================
 
 //===INTERNAL_FUNCTIONS========================================================
@@ -76,15 +98,30 @@ static void gfx_create_data_structures(){
         .msaa = VK_SAMPLE_COUNT_1_BIT
     };
 
+    s_gfxFeatures = (struct GfxFeatures){
+        .deviceFeatures =           (VkPhysicalDeviceFeatures2){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2} ,
+        .features11 =               (VkPhysicalDeviceVulkan11Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES } ,
+        .features12 =               (VkPhysicalDeviceVulkan12Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES } ,
+        .features13 =               (VkPhysicalDeviceVulkan13Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES } ,
+        // .features14 =               (VkPhysicalDeviceVulkan14Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES } ,
+        .swapchainFeatures =        (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT } ,
+        .dynamicState1Features =    (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT } ,
+        .dynamicState2Features =    (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT } ,
+        .dynamicState3Features =    (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT } ,
+        .dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR }
+    };
+
     s_gfx.supportedInstanceExtensions = dynamic_array_create(gfx_allocator(), sizeof(VkExtensionProperties),0);
     s_gfx.supportedValidationLayers = dynamic_array_create(gfx_allocator(), sizeof(VkLayerProperties), 0);
     s_gfx.supportedphysicalDevices = dynamic_array_create(gfx_allocator(), sizeof(VkPhysicalDevice), 0);
+    s_gfx.supportedDeviceExtensions = dynamic_array_create(gfx_allocator(), sizeof(VkExtensionProperties), 0);
 }
 
 static void gfx_cleanup_data_structures(){
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedInstanceExtensions);
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedValidationLayers);
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedphysicalDevices);
+    dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedDeviceExtensions);
 }
 
 static void gfx_volk_create(){
@@ -130,6 +167,28 @@ static uint32_t gfx_find_supported_instance_extension_index(const char* extensio
 }
 
 
+static uint32_t gfx_find_supported_device_extension_index(const char* extensionName){
+    for (uint32_t i = 0; i < s_gfx.supportedDeviceExtensions.count; ++i) {
+        const VkExtensionProperties* supportedExtension = dynamic_array_buffer(&s_gfx.supportedDeviceExtensions);
+        if ( c_str_equal(supportedExtension[i].extensionName, extensionName)) {
+            return i;
+        }
+    }
+    core_assert_msg(false, "failed to find supported extension %s /n", extensionName);
+    return UINT32_MAX;
+}
+
+
+static const char* gfx_find_supported_device_extension_name(const char* extensionName){
+    for (uint32_t i = 0; i < s_gfx.supportedDeviceExtensions.count; ++i) {
+        const VkExtensionProperties* supportedExtension = dynamic_array_buffer(&s_gfx.supportedDeviceExtensions);
+        if ( c_str_equal(supportedExtension[i].extensionName, extensionName)) {
+            return &supportedExtension[i].extensionName[0];
+        }
+    }
+    return nullptr;
+}
+
 static uint32_t gfx_find_supported_validation_layer(const char *layerName) {
     for (uint32_t i = 0; i < s_gfx.supportedValidationLayers.count; ++i) {
         VkLayerProperties* supportedLayers = dynamic_array_buffer(&s_gfx.supportedValidationLayers);
@@ -156,10 +215,10 @@ static void gfx_instance_create(){
         printf("Supported instance extension: %s \n", supportedExtension[i].extensionName);
     }
 
-    char* surfaceName =     ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_SURFACE_EXTENSION_NAME)))->extensionName;
-    char* win32SurfaceName =((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_WIN32_SURFACE_EXTENSION_NAME)))->extensionName;
-    char* debugUtilName =   ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)))->extensionName;
-    char* deviceProp2Name = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)))->extensionName;
+    char* surfaceName      = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_SURFACE_EXTENSION_NAME)))->extensionName;
+    char* win32SurfaceName = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_WIN32_SURFACE_EXTENSION_NAME)))->extensionName;
+    char* debugUtilName    = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)))->extensionName;
+    char* deviceProp2Name  = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)))->extensionName;
 
     DynamicArray usedInstanceExtensions = dynamic_array_create(gfx_allocator_arena(), sizeof(char*), 4);
     dynamic_array_push(gfx_allocator_arena(), &usedInstanceExtensions, &surfaceName);
@@ -206,7 +265,7 @@ static void gfx_instance_create(){
         .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
         .pEngineName = "KAH_ENGINE",
         .engineVersion = VK_MAKE_VERSION(0, 1, 0),
-        .apiVersion = VK_MAKE_VERSION(1,2,0), //vulkan 1.2 support required
+        .apiVersion = VK_MAKE_VERSION(1,4,0), //vulkan 1.2 support required
     };
 
     VkInstanceCreateInfo instanceInfo = {
@@ -227,7 +286,7 @@ static void gfx_instance_create(){
 }
 
 static void gfx_instance_cleanup(){
-    core_assert_msg(s_gfx.instance != VK_NULL_HANDLE, "Err: VkInstance has already been destroyed");
+    core_assert_msg(s_gfx.instance != VK_NULL_HANDLE, "err: VkInstance has already been destroyed");
     vkDestroyInstance(s_gfx.instance, s_gfx.allocCallback);
 }
 
@@ -386,6 +445,147 @@ static void gfx_surface_cleanup() {
     s_gfx.surface = VK_NULL_HANDLE;
 }
 
+static void gfx_queues_create(){
+    vkEnumerateDeviceExtensionProperties(s_gfx.physicalDevice, nullptr, &s_gfx.supportedDeviceExtensions.current, nullptr);
+    dynamic_array_resize(gfx_allocator(), &s_gfx.supportedDeviceExtensions, s_gfx.supportedDeviceExtensions.current);
+    VkExtensionProperties* supportedDeviceExtensions = dynamic_array_buffer(&s_gfx.supportedDeviceExtensions);
+
+    if (s_gfx.supportedDeviceExtensions.count > 0) {
+        vkEnumerateDeviceExtensionProperties(s_gfx.physicalDevice, nullptr, &s_gfx.supportedDeviceExtensions.count, supportedDeviceExtensions);
+    }
+
+    for (uint32_t i = 0; i < s_gfx.supportedDeviceExtensions.count; ++i) {
+        printf("Supported device extensions: %s \n", supportedDeviceExtensions[i].extensionName);
+    }
+
+    DynamicArray selectedQueueFamilies = dynamic_array_create(gfx_allocator_arena(), sizeof(VkQueueFamilyProperties),0);
+    vkGetPhysicalDeviceQueueFamilyProperties(s_gfx.physicalDevice, &selectedQueueFamilies.current, nullptr);
+    dynamic_array_resize(gfx_allocator_arena(), &selectedQueueFamilies,selectedQueueFamilies.current);
+
+    VkQueueFamilyProperties* queueFamilies = dynamic_array_buffer(&selectedQueueFamilies);
+    vkGetPhysicalDeviceQueueFamilyProperties(s_gfx.physicalDevice, &selectedQueueFamilies.count, queueFamilies);
+
+    struct QueueInfo {
+        uint32_t targetFlags;
+        uint32_t queueIndex;
+        uint32_t currentFlags;
+        bool supportsPresent;
+    }typedef QueueInfo;
+
+    QueueInfo graphicsQueueInfo = (QueueInfo){
+        .targetFlags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
+        .queueIndex = UINT32_MAX,
+        .currentFlags = UINT32_MAX,
+        .supportsPresent = false
+    };
+
+    for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < selectedQueueFamilies.count; ++queueFamilyIndex){
+        VkBool32 supportsPresent = VK_FALSE;
+        VkResult presentResult = vkGetPhysicalDeviceSurfaceSupportKHR(s_gfx.physicalDevice,queueFamilyIndex,s_gfx.surface,&supportsPresent);
+
+        const uint32_t currentQueueFlags = queueFamilies[queueFamilyIndex].queueFlags;
+
+        if ( presentResult >= 0 && supportsPresent == VK_TRUE){
+            if (currentQueueFlags & graphicsQueueInfo.targetFlags) {
+                if (u32_count_set_bits(currentQueueFlags) < u32_count_set_bits(graphicsQueueInfo.currentFlags)) {
+                    graphicsQueueInfo.currentFlags = currentQueueFlags;
+                    graphicsQueueInfo.queueIndex = queueFamilyIndex;
+                    graphicsQueueInfo.supportsPresent = supportsPresent;
+                }
+            }
+        }
+    }
+    printf("Graphics queue index: %u \n", graphicsQueueInfo.queueIndex);
+    core_assert_msg(graphicsQueueInfo.queueIndex != UINT32_MAX, "err: did not find valid graphics queue");
+
+    const float graphicsQueuePriority = 1.0f;
+    VkDeviceQueueCreateInfo graphicsQueueCreateInfo = (VkDeviceQueueCreateInfo){
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .queueFamilyIndex = graphicsQueueInfo.queueIndex,
+        .queueCount = 1,
+        .pQueuePriorities = &graphicsQueuePriority
+    };
+
+    DynamicArray usedDeviceExtensions = dynamic_array_create(gfx_allocator_arena(), sizeof(const char*), 10);
+    const char* swapChainName = gfx_find_supported_device_extension_name(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapChainName);
+
+    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,2,0)){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features12);
+    }
+    else {
+        // TODO: VK1.1 fallback support for descriptorIndexing & bufferDeviceAddress
+    }
+    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features13);
+    }
+    else {
+        const char* dynamicRenderingName = gfx_find_supported_device_extension_name(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+        if( dynamicRenderingName ){
+            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
+            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
+        }
+    }
+    const char* pushDescriptor = gfx_find_supported_device_extension_name(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+    if(pushDescriptor){
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &pushDescriptor);
+    }
+    const char* extDynamicState1 = gfx_find_supported_device_extension_name(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+    if(extDynamicState1){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState1Features);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState1);
+    }
+    const char* extDynamicState2 = gfx_find_supported_device_extension_name(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME);
+    if(extDynamicState2){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState2Features);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState2);
+    }
+    const char* extDynamicState3 = gfx_find_supported_device_extension_name(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
+    if(extDynamicState3){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState3Features);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState3);
+    }
+    const char* swapchainMaintence1 = gfx_find_supported_device_extension_name(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+    if(swapchainMaintence1){
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapchainMaintence1);
+    }
+
+    s_gfxFeatures.deviceFeatures.pNext = &s_gfxFeatures.features11;
+    vkGetPhysicalDeviceFeatures2(s_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
+    core_assert_msg(s_gfxFeatures.features12.descriptorIndexing, "err: Descriptor indexing is required");
+    core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
+    core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
+
+    const char** extName = dynamic_array_buffer(&usedDeviceExtensions);
+    for (uint32_t i = 0; i < usedDeviceExtensions.current; ++i){
+        printf("Selected device extensions: %s \n", extName[i]);
+    }
+
+    VkDeviceCreateInfo deviceCreateInfo = (VkDeviceCreateInfo){
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = &s_gfxFeatures.deviceFeatures,
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &graphicsQueueCreateInfo,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = nullptr,
+        .enabledExtensionCount = usedDeviceExtensions.current,
+        .ppEnabledExtensionNames = dynamic_array_buffer(&usedDeviceExtensions)
+    };
+
+    vkCreateDevice(s_gfx.physicalDevice, &deviceCreateInfo, s_gfx.allocCallback, &s_gfx.device);
+    core_assert_msg(s_gfx.device, "err: Failed to create vkDevice");
+
+    vkGetDeviceQueue(s_gfx.device, graphicsQueueInfo.queueIndex, 0, &s_gfx.queue);
+    core_assert_msg(s_gfx.queue, "err: Failed to create graphics queue");
+}
+
+static void gfx_queues_cleanup(){
+    vkDestroyDevice(s_gfx.device, s_gfx.allocCallback);
+    s_gfx.device = VK_NULL_HANDLE;
+    s_gfx.queue = VK_NULL_HANDLE;
+}
 //=============================================================================
 
 //===API=======================================================================
@@ -400,6 +600,7 @@ void gfx_create(void* windowHandle){
     gfx_debug_callbacks_create();
     gfx_physical_device_create();
     gfx_surface_create(windowHandle, &s_gfx.instance, &s_gfx.surface);
+    gfx_queues_create();
 
     VmaAllocatorCreateInfo info = {};
     // vma_create(info);
@@ -407,6 +608,7 @@ void gfx_create(void* windowHandle){
 }
 
 void gfx_cleanup(){
+    gfx_queues_cleanup();
     gfx_surface_cleanup();
     gfx_debug_callbacks_cleanup();
     gfx_instance_cleanup();

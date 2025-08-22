@@ -256,7 +256,7 @@ void mem_arena_realloc(AllocInfo* allocInfo, size_t inBufferSize){
     core_assert(allocInfo != nullptr);
     core_assert(s_arenaData->infoIndex != 0);
 
-    if(allocInfo->bufferAddress == &s_arenaData->infos[s_arenaData->infoIndex - 1].bufferAddress){
+    if(allocInfo->bufferAddress == s_arenaData->infos[s_arenaData->infoIndex - 1].bufferAddress){
         int64_t bufferChangeAmount = inBufferSize - allocInfo->commitedMemory; //may be -ve
         allocInfo->commitedMemory = inBufferSize;
         allocInfo->reservedMemory = inBufferSize;

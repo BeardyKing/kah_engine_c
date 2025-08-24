@@ -1,5 +1,6 @@
 //===INCLUDES==================================================================
 #include <kah_gfx/gfx_interface.h>
+#include <kah_gfx/gfx_logging.h>
 #include <kah_gfx/vulkan/gfx_vulkan.h>
 #include <kah_gfx/vulkan/gfx_vulkan_surface.h>
 
@@ -196,6 +197,7 @@ static void gfx_volk_create(){
     VkResult volkInitRes = volkInitialize();
     core_assert(volkInitRes == VK_SUCCESS);
     s_gfx.instanceVersion = volkGetInstanceVersion();
+    gfx_log_info("Vulkan(volk) version %d.%d.%d initialized.\n",VK_VERSION_MAJOR(s_gfx.instanceVersion),VK_VERSION_MINOR(s_gfx.instanceVersion),VK_VERSION_PATCH(s_gfx.instanceVersion));
 }
 
 static void gfx_volk_cleanup(){
@@ -309,7 +311,7 @@ static void gfx_instance_create(){
 
     VkExtensionProperties* supportedExtension = dynamic_array_buffer(&s_gfx.supportedInstanceExtensions);
     for (uint32_t i = 0; i < s_gfx.supportedInstanceExtensions.count; ++i) {
-        printf("Supported instance extension: %s \n", supportedExtension[i].extensionName);
+        gfx_log_verbose("Supported instance extension: %s \n", supportedExtension[i].extensionName);
     }
 
     char* surfaceName      = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_SURFACE_EXTENSION_NAME)))->extensionName;
@@ -325,7 +327,7 @@ static void gfx_instance_create(){
 
     for (uint32_t i = 0; i < usedInstanceExtensions.current; ++i) {
         char* extName = *(char**)dynamic_array_get(&usedInstanceExtensions, i);
-        printf("Used instance extension: %s\n", extName);
+        gfx_log_info("Used instance extension: %s\n", extName);
     }
     //=========================================================================
 
@@ -341,7 +343,7 @@ static void gfx_instance_create(){
 
     VkLayerProperties* supportedValidationLayers = dynamic_array_buffer(&s_gfx.supportedValidationLayers);
     for (uint32_t i = 0; i < s_gfx.supportedValidationLayers.count; ++i) {
-        printf("Layer: %s - Desc: %s\n", supportedValidationLayers[i].layerName, supportedValidationLayers->description);
+        gfx_log_verbose("Layer: %s - Desc: %s\n", supportedValidationLayers[i].layerName, supportedValidationLayers->description);
     }
 
     char* validationLayerName = ((VkLayerProperties*)dynamic_array_get(&s_gfx.supportedValidationLayers,gfx_find_supported_validation_layer(KAH_VK_VALIDATION_LAYER_NAME)))->layerName;
@@ -351,7 +353,7 @@ static void gfx_instance_create(){
 
     for (uint32_t i = 0; i < usedValidationLayers.current; ++i) {
         char* str = *(char**)dynamic_array_get(&usedValidationLayers, i);
-        printf("Used validation layers: %s \n", str);
+        gfx_log_info("Used validation layers: %s \n", str);
     }
     //=========================================================================
 
@@ -395,19 +397,19 @@ static VkBool32 VKAPI_PTR validation_message_callback(
     core_assert(callbackData != nullptr);
     switch (messageWarningLevel) {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
-            printf("[ERROR]: \ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
+            gfx_log_error("[ERROR]: \ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
             break;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: {
-            printf("[WARNING]:\ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
+            gfx_log_warning("[WARNING]:\ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
             break;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: {
-            printf("[INFO]: \ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
+            gfx_log_info("[INFO]: \ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
             break;
         }
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: {
-            printf("[VERBOSE]: \ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
+            gfx_log_verbose("[VERBOSE]: \ncode: \t\t%s \nmessage: \t%s\n", callbackData->pMessageIdName, callbackData->pMessage);
             break;
         }
         default: {
@@ -448,8 +450,8 @@ static const char* device_type_to_string(VkPhysicalDeviceType type) {
 static void debug_print_supported_physical_devices_info(){
     const VkPhysicalDevice* physicalDevices = dynamic_array_buffer(&s_gfx.supportedphysicalDevices);
 
-    printf("=== PHYSICAL DEVICE INFO ======\n\n");
-    printf("Found %u Vulkan device(s):\n", s_gfx.supportedphysicalDevices.count);
+    gfx_log_info("=== PHYSICAL DEVICE INFO ======\n\n");
+    gfx_log_info("Found %u Vulkan device(s):\n", s_gfx.supportedphysicalDevices.count);
     for (uint32_t i = 0; i < s_gfx.supportedphysicalDevices.count; ++i) {
         VkPhysicalDeviceProperties props;
         vkGetPhysicalDeviceProperties(physicalDevices[i], &props);
@@ -464,12 +466,12 @@ static void debug_print_supported_physical_devices_info(){
             }
         }
 
-        printf("Device %u: %s\n", i, props.deviceName);
-        printf("\tType   : %s\n", device_type_to_string(props.deviceType));
-        printf("\tMemory : %.2f MiB of device-local memory\n", (float)totalDeviceLocalMem / (float)KAH_MiB);
-        printf("\n");
+        gfx_log_info("Device %u: %s\n", i, props.deviceName);
+        gfx_log_info("\tType   : %s\n", device_type_to_string(props.deviceType));
+        gfx_log_info("\tMemory : %.2f MiB of device-local memory\n", (float)totalDeviceLocalMem / (float)KAH_MiB);
+        gfx_log_info("\n");
     }
-    printf("===============================\n");
+    gfx_log_info("===============================\n");
 }
 
 static void debug_print_selected_physical_device_info(){
@@ -490,8 +492,8 @@ static void debug_print_selected_physical_device_info(){
 
     const char *deviceType = device_type_to_string(s_gfx.deviceProperties.deviceType);
 
-    printf("Selected physical device\n");
-    printf("Name:\t\t%s \nType:\t\t%s \nMemory:\t\t%.2f MiB \nHeap Count:\t%u \nVersion:\t%u.%u.%u \nDriver: \t%u.%u.%u\n",
+    gfx_log_info("Selected physical device\n");
+    gfx_log_info("Name:\t\t%s \nType:\t\t%s \nMemory:\t\t%.2f MiB \nHeap Count:\t%u \nVersion:\t%u.%u.%u \nDriver: \t%u.%u.%u\n",
              s_gfx.deviceProperties.deviceName,
              deviceType,
              totalDeviceLocalMem / (float)KAH_MiB,
@@ -552,7 +554,7 @@ static void gfx_physical_device_queues_create(){
     }
 
     for (uint32_t i = 0; i < s_gfx.supportedDeviceExtensions.count; ++i) {
-        printf("Supported device extensions: %s \n", supportedDeviceExtensions[i].extensionName);
+        gfx_log_verbose("Supported device extensions: %s \n", supportedDeviceExtensions[i].extensionName);
     }
 
     DynamicArray selectedQueueFamilies = dynamic_array_create(gfx_allocator_arena(), sizeof(VkQueueFamilyProperties),0);
@@ -592,7 +594,7 @@ static void gfx_physical_device_queues_create(){
             }
         }
     }
-    printf("Graphics queue index: %u \n", graphicsQueueInfo.queueIndex);
+    gfx_log_verbose("Graphics queue index: %u \n", graphicsQueueInfo.queueIndex);
     core_assert_msg(graphicsQueueInfo.queueIndex != UINT32_MAX, "err: did not find valid graphics queue");
 
     const float graphicsQueuePriority = 1.0f;
@@ -661,7 +663,7 @@ static void gfx_physical_device_queues_create(){
 
     const char** extName = dynamic_array_buffer(&usedDeviceExtensions);
     for (uint32_t i = 0; i < usedDeviceExtensions.current; ++i){
-        printf("Selected device extensions: %s \n", extName[i]);
+        gfx_log_info("Selected device extensions: %s \n", extName[i]);
     }
 
     VkDeviceCreateInfo deviceCreateInfo = (VkDeviceCreateInfo){
@@ -1394,8 +1396,6 @@ void gfx_create(void* windowHandle){
     gfx_color_buffer_create();
     gfx_depth_stencil_buffer_create();
     gfx_pipeline_cache_create();
-
-    printf("Vulkan(volk) version %d.%d.%d initialized.\n",VK_VERSION_MAJOR(s_gfx.instanceVersion),VK_VERSION_MINOR(s_gfx.instanceVersion),VK_VERSION_PATCH(s_gfx.instanceVersion));
 }
 
 void gfx_cleanup(){

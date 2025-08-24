@@ -29,6 +29,7 @@ add_library(kah_core
         src/dynamic_array.c
         inc/kah_core/c_string.h
         src/c_string.c
+        inc/kah_core/logging.h
 )
 
 target_include_directories(kah_core

@@ -49,6 +49,7 @@ void   bitarray_print(BitArrayHeader* header);
 
 //===BITSET_UTILS==============================================================
 CORE_FORCE_INLINE size_t u32_count_set_bits(uint32_t u32)                                   { return __builtin_popcountl(u32); }
+CORE_FORCE_INLINE bool   u32_is_bit_set(uint32_t u32, size_t bitIndex)                      { core_assert(bitIndex < 32); return (u32 & (1UL << bitIndex)) != 0; }
 
 CORE_FORCE_INLINE bool   u64_is_bit_set(uint64_t word, size_t bitIndex)                     { core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); return (word & (1ULL << bitIndex)) != 0; }
 CORE_FORCE_INLINE void   u64_set_bit(uint64_t* word, size_t bitIndex)                       { core_assert(word != NULL); core_assert(bitIndex < KAH_BIT_ARRAY_ALIGNMENT); *word |= (1ULL << bitIndex); }

@@ -7,6 +7,8 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan_surface_win.c
         inc/kah_gfx/vulkan/gfx_vulkan.h
         src/vulkan/gfx_vulkan.c
+        inc/kah_gfx/gfx_logging.h
+        src/gfx_logging.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)

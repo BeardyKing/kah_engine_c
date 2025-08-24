@@ -11,6 +11,9 @@
 MATH_FORCE_INLINE int32_t min_i32(int32_t a, int32_t b) { return (a < b) ? a : b; }
 MATH_FORCE_INLINE int32_t max_i32(int32_t a, int32_t b) { return (a > b) ? a : b; }
 
+MATH_FORCE_INLINE int32_t min_u32(uint32_t a, uint32_t b) { return (a < b) ? a : b; }
+MATH_FORCE_INLINE int32_t max_u32(uint32_t a, uint32_t b) { return (a > b) ? a : b; }
+
 float clamp_f(float value, float min, float max);
 float as_degrees_f(float radians);
 float as_radians_f(float degrees);

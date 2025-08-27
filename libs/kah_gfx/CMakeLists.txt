@@ -9,6 +9,10 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan.c
         inc/kah_gfx/gfx_logging.h
         src/gfx_logging.c
+        inc/kah_gfx/vulkan/gfx_vulkan_imgui.h
+        src/vulkan/gfx_vulkan_imgui.c
+        inc/kah_gfx/vulkan/gfx_vulkan_interface.h
+        inc/kah_gfx/vulkan/gfx_vulkan_types.h
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
@@ -36,7 +40,6 @@ target_include_directories(kah_gfx
         PRIVATE src
 )
 
-
 find_package(Vulkan REQUIRED)
 target_link_libraries(kah_gfx
         kah_core
@@ -45,6 +48,7 @@ target_link_libraries(kah_gfx
         volk
         volk_headers
         vma_static
+        dcimgui
 )
 
 set_target_properties(kah_gfx PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED YES C_EXTENSIONS NO)

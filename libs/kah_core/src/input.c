@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <kah_core/input.h>
 
-//===INTERNAL_STRUCTS===================================================================================================
+//===INTERNAL_STRUCTS==========================================================
 struct KeyInfo {
     bool keyDown;
     float timePressed;
@@ -30,9 +30,9 @@ struct Input {
 } typedef Input;
 
 static Input s_input;
-//======================================================================================================================
+//=============================================================================
 
-//===INTERNAL_FUNCTIONS=================================================================================================
+//===INTERNAL_FUNCTIONS========================================================
 static void update_relative_mouse_position() {
     MouseInfo *mouseInfo = &s_input.mouse;
     mouseInfo->moveDelta.x = (float) mouseInfo->virtualPosition.x - (float) mouseInfo->lastVirtualPosition.x;
@@ -45,9 +45,9 @@ static void update_mouse_scroll() {
     mouseInfo->scrollDelta = (float) mouseInfo->currentScrollPosition - (float) mouseInfo->lastScrollPosition;
     mouseInfo->lastScrollPosition = mouseInfo->currentScrollPosition;
 }
-//======================================================================================================================
+//=============================================================================
 
-//===API================================================================================================================
+//===API=======================================================================
 void input_update() {
     update_relative_mouse_position();
     update_mouse_scroll();
@@ -176,9 +176,9 @@ void input_mouse_scroll(const int32_t y) {
     MouseInfo *cursor = &s_input.mouse;
     cursor->currentScrollPosition += y;
 }
-//======================================================================================================================
+//=============================================================================
 
-//===INIT_&_SHUTDOWN====================================================================================================
+//===INIT/SHUTDOWN=============================================================
 void input_create() {
     s_input = (Input){};
 
@@ -190,4 +190,4 @@ void input_create() {
 void input_cleanup() {
     s_input = (Input){};
 }
-//======================================================================================================================
+//=============================================================================

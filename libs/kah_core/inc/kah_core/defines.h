@@ -22,6 +22,7 @@
 
 #define FEATURE_RUN_TESTS FEATURE_OFF
 #define FEATURE_ASSERTS CHECK_FEATURE(KAH_DEBUG)
+#define FEATURE_GFX_IMGUI FEATURE_ON
 //=============================================================================
 
 //===IMPL======================================================================

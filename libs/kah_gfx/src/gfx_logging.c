@@ -15,7 +15,7 @@ static DebugLogInfo s_gfxLogging = (DebugLogInfo){
 };
 //=============================================================================
 
-//===INTERNAL_FUNCTIONS==========================================================================
+//===INTERNAL_FUNCTIONS========================================================
 static void _internal_gfx_log(LogLevelBits level, const char* fmt, va_list args) {
     if (s_gfxLogging.printf_cb) {
         s_gfxLogging.printf_cb( LOG_CHANNEL_GFX, fmt, args);

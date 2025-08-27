@@ -2,7 +2,10 @@
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/gfx_logging.h>
 #include <kah_gfx/vulkan/gfx_vulkan.h>
+#include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_surface.h>
+#include <kah_gfx/vulkan/gfx_vulkan_types.h>
+#include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -145,16 +148,12 @@ static struct GfxFeatures{
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
 } s_gfxFeatures = {};
 
-static struct TargetVulkanFormats {
-    VkSurfaceFormatKHR surfaceFormat;
-    VkFormat depthFormat;
-    VkFormat colorFormat;
-} s_targetVulkanFormats = {};
+static GfxVulkanTargetAttachmentFormats s_targetAttachmentFormats = {};
 //=============================================================================
 
 //===INTERNAL_FUNCTIONS========================================================
-Allocator gfx_allocator(){ return allocators()->cstd;}          // TODO: replace with gfx lifetime arena allocator
-Allocator gfx_allocator_arena(){ return allocators()->arena;}   // TODO: replace with gfx frame arena
+static Allocator gfx_allocator(){ return allocators()->cstd;}          // TODO: replace with gfx lifetime arena allocator
+static Allocator gfx_allocator_arena(){ return allocators()->arena;}   // TODO: replace with gfx frame arena
 
 static void gfx_create_data_structures(){
     s_gfx = (struct GfxBackend){};
@@ -749,34 +748,6 @@ static VkPresentModeKHR select_present_mode() {
     return selectedPresentMode;
 }
 
-
-VkSurfaceFormatKHR gfx_utils_select_surface_format() {
-    DynamicArray deviceSurfaceFormats = dynamic_array_create(gfx_allocator_arena(), sizeof(vkGetPhysicalDeviceSurfaceFormatsKHR), 0);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.current, nullptr);
-    dynamic_array_resize(gfx_allocator_arena(), &deviceSurfaceFormats, deviceSurfaceFormats.current);
-
-    VkSurfaceFormatKHR *surfaceFormats = dynamic_array_buffer(&deviceSurfaceFormats);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.count, surfaceFormats);
-
-    // Try select best surface format
-    constexpr VkSurfaceFormatKHR KAH_TARGET_SWAPCHAIN_FORMAT = {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
-
-    VkSurfaceFormatKHR selectedSurfaceFormat = {};
-
-    if (deviceSurfaceFormats.count == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED) {
-        selectedSurfaceFormat = KAH_TARGET_SWAPCHAIN_FORMAT;
-    }
-    else {
-        for (uint32_t i = 0; i < deviceSurfaceFormats.count; ++i) {
-            if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                selectedSurfaceFormat = surfaceFormats[i];
-                break;
-            }
-        }
-    }
-    return selectedSurfaceFormat;
-}
-
 VkCompositeAlphaFlagBitsKHR select_composite_alpha_format(const VkSurfaceCapabilitiesKHR* surfaceCapabilities) {
     VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     constexpr uint32_t KAH_COMPOSITE_ALPHA_FLAGS_COUNT = 4;
@@ -794,32 +765,6 @@ VkCompositeAlphaFlagBitsKHR select_composite_alpha_format(const VkSurfaceCapabil
         };
     }
     return compositeAlpha;
-}
-
-VkFormat gfx_utils_find_depth_format(const VkImageTiling desiredTilingFormat) {
-    constexpr VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    constexpr uint32_t FORMAT_CANDIDATE_COUNT = 5;
-    VkFormat candidates[FORMAT_CANDIDATE_COUNT] = {
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_D24_UNORM_S8_UINT,
-        VK_FORMAT_D16_UNORM_S8_UINT,
-        VK_FORMAT_D16_UNORM,
-    };
-
-    for (uint32_t i = 0; i < FORMAT_CANDIDATE_COUNT; ++i) {
-        VkFormatProperties props;
-        vkGetPhysicalDeviceFormatProperties(s_gfx.physicalDevice, candidates[i], &props);
-
-        if ((desiredTilingFormat == VK_IMAGE_TILING_LINEAR) && ((props.linearTilingFeatures & features) == features)) {
-            return candidates[i];
-        }
-        if ((desiredTilingFormat == VK_IMAGE_TILING_OPTIMAL) && ((props.optimalTilingFeatures & features) == features)) {
-            return candidates[i];
-        }
-    }
-    core_assert_msg(false, "err: could not find supported depth format");
-    return VK_FORMAT_UNDEFINED;
 }
 
 static void gfx_swap_chain_create(){
@@ -841,7 +786,7 @@ static void gfx_swap_chain_create(){
 
 
     const VkPresentModeKHR swapChainPresentMode = select_present_mode();
-    s_targetVulkanFormats.surfaceFormat = gfx_utils_select_surface_format();
+    s_targetAttachmentFormats.surfaceFormat = gfx_vulkan_utils_select_surface_format();
     const VkCompositeAlphaFlagBitsKHR compositeAlphaFormat = select_composite_alpha_format(&surfaceCapabilities);
     core_assert(surfaceCapabilities.maxImageCount >= KAH_SWAP_CHAIN_IMAGE_COUNT );
     core_assert(surfaceCapabilities.minImageCount <= KAH_SWAP_CHAIN_IMAGE_COUNT );
@@ -869,8 +814,8 @@ static void gfx_swap_chain_create(){
         .flags = 0,
         .surface = s_gfx.swapChain.surface,
         .minImageCount = s_gfx.swapChain.imageCount,
-        .imageFormat = s_targetVulkanFormats.surfaceFormat.format,
-        .imageColorSpace = s_targetVulkanFormats.surfaceFormat.colorSpace,
+        .imageFormat = s_targetAttachmentFormats.surfaceFormat.format,
+        .imageColorSpace = s_targetAttachmentFormats.surfaceFormat.colorSpace,
         .imageExtent = swapChainExtent,
         .imageArrayLayers = 1,
         .imageUsage = swapchainImageUsage,
@@ -909,7 +854,7 @@ static void gfx_swap_chain_create(){
             .flags = 0,
             .image = nullptr,
             .viewType = VK_IMAGE_VIEW_TYPE_2D ,
-            .format = s_targetVulkanFormats.surfaceFormat.format,
+            .format = s_targetAttachmentFormats.surfaceFormat.format,
             .components = (VkComponentMapping){
                 .r = VK_COMPONENT_SWIZZLE_R,
                 .g = VK_COMPONENT_SWIZZLE_G,
@@ -986,11 +931,11 @@ static void gfx_fences_cleanup() {
 }
 
 static void gfx_color_buffer_create(){
-    s_targetVulkanFormats.colorFormat = s_targetVulkanFormats.surfaceFormat.format; // Consider adding a new find best format function
+    s_targetAttachmentFormats.colorFormat = s_targetAttachmentFormats.surfaceFormat.format; // Consider adding a new find best format function
     VkImageCreateInfo colourImageInfo = (VkImageCreateInfo){
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = s_targetVulkanFormats.colorFormat,
+        .format = s_targetAttachmentFormats.colorFormat,
         .extent = (VkExtent3D){
             .width = s_gfx.swapChain.width,
             .height = s_gfx.swapChain.height,
@@ -1020,7 +965,7 @@ static void gfx_color_buffer_create(){
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = s_gfx.backBuffer.color.image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = s_targetVulkanFormats.colorFormat,
+        .format = s_targetAttachmentFormats.colorFormat,
         .subresourceRange = (VkImageSubresourceRange){
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel = 0,
@@ -1044,11 +989,11 @@ static void gfx_color_buffer_cleanup(){
 }
 
 static void gfx_depth_stencil_buffer_create() {
-    s_targetVulkanFormats.depthFormat = gfx_utils_find_depth_format(VK_IMAGE_TILING_OPTIMAL);
+    s_targetAttachmentFormats.depthFormat = gfx_vulkan_utils_find_depth_format(VK_IMAGE_TILING_OPTIMAL);
     const VkImageCreateInfo depthImageInfo = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
-            .format = s_targetVulkanFormats.depthFormat,
+            .format = s_targetAttachmentFormats.depthFormat,
             .extent = {
                     .width = s_gfx.swapChain.width,
                     .height = s_gfx.swapChain.height,
@@ -1077,7 +1022,7 @@ static void gfx_depth_stencil_buffer_create() {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = s_gfx.backBuffer.depthStencil.image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = s_targetVulkanFormats.depthFormat,
+            .format = s_targetAttachmentFormats.depthFormat,
             .subresourceRange = {
                     .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
                     .baseMipLevel = 0,
@@ -1087,7 +1032,7 @@ static void gfx_depth_stencil_buffer_create() {
             }
     };
 
-    if (s_targetVulkanFormats.depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
+    if (s_targetAttachmentFormats.depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
         depthImageViewInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
 
@@ -1199,7 +1144,7 @@ static void gfx_window_resize() {
     gfx_depth_stencil_buffer_create();
 }
 
-void gfx_command_begin_immediate_recording() {
+static void gfx_command_begin_immediate_recording() {
     // add immediate cmd buf instead of reusing the current queue
     // add validation that cmd buf isn't already in use
     VkCommandBufferBeginInfo cmdBufBeginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -1207,7 +1152,7 @@ void gfx_command_begin_immediate_recording() {
     vkBeginCommandBuffer(s_gfx.commandBuffers[gfx_buffer_index()], &cmdBufBeginInfo);
 }
 
-void gfx_command_end_immediate_recording() {
+static void gfx_command_end_immediate_recording() {
     // add immediate cmd buf
     // add validation that cmd buf isn't already in use
     vkEndCommandBuffer(s_gfx.commandBuffers[gfx_buffer_index()]);
@@ -1222,7 +1167,7 @@ void gfx_command_end_immediate_recording() {
     vkQueueWaitIdle(s_gfx.queue);
 }
 
-void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
+static void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
     //TODO: we should resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdBeginRendering(cmdBuffer, renderingInfo);
@@ -1232,7 +1177,7 @@ void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInf
     }
 }
 
-void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
+static void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
     //TODO: we should resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdEndRendering(cmdBuffer);
@@ -1242,7 +1187,7 @@ void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
     }
 }
 
-void gfx_command_insert_memory_barrier(
+static void gfx_command_insert_memory_barrier(
         VkCommandBuffer cmdBuffer,
         const VkImage *image,
         const VkAccessFlags srcAccessMask,
@@ -1266,7 +1211,7 @@ void gfx_command_insert_memory_barrier(
     vkCmdPipelineBarrier(cmdBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 }
 
-void gfx_dynamic_render(VkCommandBuffer cmdBuffer){
+static void gfx_dynamic_render(VkCommandBuffer cmdBuffer){
     gfx_command_insert_memory_barrier(
             cmdBuffer,
             &s_gfx.swapChain.buffers[gfx_swap_chain_index()].image,
@@ -1314,6 +1259,10 @@ void gfx_dynamic_render(VkCommandBuffer cmdBuffer){
 
             const VkRect2D scissor = {0, 0, s_gfx.swapChain.width, s_gfx.swapChain.height};
             vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+            gfx_imgui_draw(cmdBuffer);
+#endif // CHECK_FEATURE(FEATURE_GFX_IMGUI)
         }
         gfx_command_end_rendering(cmdBuffer);
     }
@@ -1330,7 +1279,7 @@ void gfx_dynamic_render(VkCommandBuffer cmdBuffer){
     );
 }
 
-static void gfx_render_frame(VkCommandBuffer *cmdBuffer) {
+static void gfx_render_frame(VkCommandBuffer cmdBuffer) {
     constexpr VkPipelineStageFlags submitPipelineStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     const VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -1338,7 +1287,7 @@ static void gfx_render_frame(VkCommandBuffer *cmdBuffer) {
         .pWaitSemaphores = &s_gfx.semaphores[gfx_last_swap_chain_index()].presentDone,
         .pWaitDstStageMask = &submitPipelineStages,
         .commandBufferCount = 1,
-        .pCommandBuffers = cmdBuffer,
+        .pCommandBuffers = &cmdBuffer,
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &s_gfx.semaphores[gfx_swap_chain_index()].renderDone,
     };
@@ -1369,13 +1318,97 @@ void gfx_update(){
     }
     gfx_end_command_recording(cmdBuffer);
 
-    gfx_render_frame(&cmdBuffer);
+    gfx_render_frame(cmdBuffer);
     gfx_present();
     gfx_flush();
 
     s_gfx.currentGfxFrame++;
 }
 
+//===API/GFX_VULKAN_INTERFACE==================================================
+VkInstance* gfx_vulkan_instance(){
+    return &s_gfx.instance;
+}
+
+VkPhysicalDevice* gfx_vulkan_physical_device(){
+    return &s_gfx.physicalDevice;
+}
+
+VkDevice* gfx_vulkan_device(){
+    return &s_gfx.device;
+}
+
+VkQueue* gfx_vulkan_queue(){
+    return &s_gfx.queue;
+}
+
+VkAllocationCallbacks* gfx_vulkan_allocation_callbacks(){
+    return s_gfx.allocCallback;
+}
+
+VkSampleCountFlagBits gfx_vulkan_sample_count(){
+    return s_gfx.sampleCount;
+}
+
+GfxVulkanTargetAttachmentFormats* gfx_vulkan_target_attachment_formats()
+{
+    return &s_targetAttachmentFormats;
+}
+//=============================================================================
+
+//===API/GFX_VULKAN_INTERFACE/UTILS============================================
+VkFormat gfx_vulkan_utils_find_depth_format(const VkImageTiling desiredTilingFormat) {
+    constexpr VkFormatFeatureFlags features = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    constexpr uint32_t FORMAT_CANDIDATE_COUNT = 5;
+    VkFormat candidates[FORMAT_CANDIDATE_COUNT] = {
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM,
+    };
+
+    for (uint32_t i = 0; i < FORMAT_CANDIDATE_COUNT; ++i) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(s_gfx.physicalDevice, candidates[i], &props);
+
+        if ((desiredTilingFormat == VK_IMAGE_TILING_LINEAR) && ((props.linearTilingFeatures & features) == features)) {
+            return candidates[i];
+        }
+        if ((desiredTilingFormat == VK_IMAGE_TILING_OPTIMAL) && ((props.optimalTilingFeatures & features) == features)) {
+            return candidates[i];
+        }
+    }
+    core_assert_msg(false, "err: could not find supported depth format");
+    return VK_FORMAT_UNDEFINED;
+}
+
+VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
+    DynamicArray deviceSurfaceFormats = dynamic_array_create(gfx_allocator_arena(), sizeof(vkGetPhysicalDeviceSurfaceFormatsKHR), 0);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.current, nullptr);
+    dynamic_array_resize(gfx_allocator_arena(), &deviceSurfaceFormats, deviceSurfaceFormats.current);
+
+    VkSurfaceFormatKHR *surfaceFormats = dynamic_array_buffer(&deviceSurfaceFormats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.count, surfaceFormats);
+
+    // Try select best surface format
+    constexpr VkSurfaceFormatKHR KAH_TARGET_SWAPCHAIN_FORMAT = {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+
+    VkSurfaceFormatKHR selectedSurfaceFormat = {};
+
+    if (deviceSurfaceFormats.count == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED) {
+        selectedSurfaceFormat = KAH_TARGET_SWAPCHAIN_FORMAT;
+    }
+    else {
+        for (uint32_t i = 0; i < deviceSurfaceFormats.count; ++i) {
+            if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                selectedSurfaceFormat = surfaceFormats[i];
+                break;
+            }
+        }
+    }
+    return selectedSurfaceFormat;
+}
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================
@@ -1396,9 +1429,17 @@ void gfx_create(void* windowHandle){
     gfx_color_buffer_create();
     gfx_depth_stencil_buffer_create();
     gfx_pipeline_cache_create();
+
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+    gfx_imgui_create(windowHandle);
+#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 }
 
 void gfx_cleanup(){
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+    gfx_imgui_cleanup();
+#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
+
     gfx_pipeline_cache_cleanup();
     gfx_depth_stencil_buffer_cleanup();
     gfx_color_buffer_cleanup();

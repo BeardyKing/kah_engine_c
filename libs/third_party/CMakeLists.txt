@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.11)
 include(FetchContent)
 
 #===SLANG======================================================================
@@ -36,16 +37,55 @@ find_package(Vulkan REQUIRED)
 target_link_libraries(vma_static PUBLIC Vulkan::Vulkan)
 #==============================================================================
 
-#===IMGUI======================================================================
-#TODO: use cimgui bindings
-#FetchContent_Declare(
-#        imgui
-#        GIT_REPOSITORY https://github.com/ocornut/imgui.git
-#        GIT_TAG docking
-#        GIT_SHALLOW TRUE
-#)
-#FetchContent_MakeAvailable(imgui)
-#target_compile_definitions(kah_gfx PRIVATE IMGUI_IMPL_VULKAN_USE_VOLK)
-#==============================================================================
+#===DEAR_IMGUI=================================================================
+#NOTE: dear imgui uses C++ API & implementation.
+#      Checked in dear imgui version grabbed from release src "v1.92.2b-docking"
+#      https://github.com/ocornut/imgui/releases/tag/v1.92.2b-docking
+#
+#      Bindings built locally from release src "DearBindings_v0.16_ImGui_v1.92.2b"
+#      https://github.com/dearimgui/dear_bindings/releases/tag/DearBindings_v0.16_ImGui_v1.92.2b
+project(dcimgui)
+add_library(dcimgui
+        dear_c_imgui/imgui.h
+        dear_c_imgui/imgui.cpp
+        dear_c_imgui/imgui_demo.cpp
+        dear_c_imgui/imgui_draw.cpp
+        dear_c_imgui/imgui_widgets.cpp
+        dear_c_imgui/imgui_tables.cpp
+        dear_c_imgui/backends/imgui_impl_vulkan.cpp
+        dear_c_imgui/backends/imgui_impl_vulkan.h
 
+        dear_c_imgui/dcimgui.cpp
+        dear_c_imgui/dcimgui.h
+        dear_c_imgui/dcimgui_internal.cpp
+        dear_c_imgui/dcimgui_internal.h
+        dear_c_imgui/backends/dcimgui_impl_vulkan.cpp
+        dear_c_imgui/backends/dcimgui_impl_vulkan.h
+)
 
+if (WIN32)
+    list(APPEND IMGUI_BACKENDS
+            dear_c_imgui/backends/imgui_impl_win32.cpp
+            dear_c_imgui/backends/imgui_impl_win32.h
+
+            dear_c_imgui/backends/dcimgui_impl_win32.cpp
+            dear_c_imgui/backends/dcimgui_impl_win32.h
+    )
+endif ()
+
+find_package(Vulkan REQUIRED)
+target_link_libraries(dcimgui
+        Vulkan::Vulkan
+        volk
+)
+
+if (WIN32)
+target_link_libraries( dcimgui
+        dwmapi
+)
+endif()
+
+target_include_directories(dcimgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dear_c_imgui)
+target_include_directories(dcimgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dear_c_imgui/backends)
+target_compile_definitions(dcimgui PRIVATE IMGUI_IMPL_VULKAN_USE_VOLK)
+target_sources(dcimgui PRIVATE ${IMGUI_BACKENDS})

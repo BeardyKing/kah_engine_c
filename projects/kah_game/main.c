@@ -7,17 +7,15 @@
 #include <kah_core/input.h>
 #include <kah_core/time.h>
 #include <kah_core/window.h>
-#include <kah_core/utils.h>
 #include <kah_core/bit_array.h>
-
 #if CHECK_FEATURE(FEATURE_RUN_TESTS)
 #include <kah_core/tests/test_bits.h>
 #include <kah_core/tests/test_data_structures.h>
 #endif
 
 #include <kah_gfx/gfx_interface.h>
+#include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
 
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 //=============================================================================
@@ -40,6 +38,14 @@ void test_run_all(){
 #endif
 }
 
+
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+void imgui_update() {
+    gfx_imgui_begin();
+    gfx_imgui_demo_window();
+}
+#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
+
 int main(void)
 {
     test_run_all();
@@ -50,6 +56,9 @@ int main(void)
 
     {
         window_create("kah engine - runtime", windowSize, KAH_WINDOW_POSITION_CENTERED);
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+        window_set_procedure_callback_func(gfx_imgui_get_proc_function_pointer());
+#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
         time_create();
         input_create();
         gfx_create(window_get_handle());
@@ -59,6 +68,9 @@ int main(void)
             input_set_time(time_current());
             window_update();
             input_update();
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+            imgui_update();
+#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
             gfx_update();
         }
 

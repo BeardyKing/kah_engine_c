@@ -13,6 +13,8 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan_imgui.c
         inc/kah_gfx/vulkan/gfx_vulkan_interface.h
         inc/kah_gfx/vulkan/gfx_vulkan_types.h
+        inc/kah_gfx/gfx_task_graph.h
+        src/gfx_task_graph.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)

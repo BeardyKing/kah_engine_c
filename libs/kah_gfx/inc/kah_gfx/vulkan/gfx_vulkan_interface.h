@@ -16,6 +16,12 @@ VkSampleCountFlagBits gfx_vulkan_sample_count();
 GfxVulkanTargetAttachmentFormats* gfx_vulkan_target_attachment_formats();
 //=============================================================================
 
+//===RENDER_TASKS==============================================================
+void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer);
+void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer);
+void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer);
+//=============================================================================
+
 //===UTILS=====================================================================
 VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format();
 VkFormat gfx_vulkan_utils_find_depth_format(VkImageTiling desiredTilingFormat);

@@ -64,6 +64,7 @@ int main(void)
         gfx_create(window_get_handle());
 
         while (window_is_open()){
+            mem_arena_reset();
             time_tick();
             input_set_time(time_current());
             window_update();

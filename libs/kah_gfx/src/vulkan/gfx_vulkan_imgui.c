@@ -2,10 +2,12 @@
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
 //===INCLUDES==================================================================
-#include <kah_core/assert.h>
-
 #include <kah_gfx/vulkan/gfx_vulkan.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
+#include <kah_gfx/gfx_logging.h>
+
+#include <kah_core/assert.h>
+#include <kah_core/memory.h>
 
 #include <dcimgui.h>
 #include <backends/dcimgui_impl_vulkan.h>
@@ -23,6 +25,10 @@ core_not_implemented();
 
 static VkDescriptorPool s_imguiDescriptorPool = {VK_NULL_HANDLE};
 static bool s_imguiFinishedRendering = {true};
+#if KAH_DEBUG
+static size_t s_imguiCurrentAllocationAmount = 0;
+static size_t s_imguiCurrentAllocationCount = 0;
+#endif //KAH_DEBUG
 //=============================================================================
 
 //===INTERNAL_FUNCTIONS========================================================
@@ -80,6 +86,24 @@ static void gfx_imgui_set_theme(){
     colors[ImGuiCol_NavWindowingDimBg] = (ImVec4){0.80f, 0.80f, 0.80f, 0.20f};
     colors[ImGuiCol_ModalWindowDimBg] = (ImVec4){0.80f, 0.80f, 0.80f, 0.35f};
 }
+
+static void* gfx_imgui_cstd_alloc(size_t sz, void* /*user_data*/ ){
+#if KAH_DEBUG
+    s_imguiCurrentAllocationAmount += sz;
+    s_imguiCurrentAllocationCount++;
+    gfx_log_verbose("imgui alloc size: %zu - total: %zu - count: %zu\n", sz, s_imguiCurrentAllocationAmount, s_imguiCurrentAllocationCount);
+#endif //#if KAH_DEBUG
+    return mem_cstd_alloc(sz)->bufferAddress;
+}
+
+static void gfx_imgui_mem_cstd_find_alloc_info(void* ptr, void* /*user_data*/ ){
+    AllocInfo* info = mem_cstd_find_alloc_info(ptr);
+#if KAH_DEBUG
+    s_imguiCurrentAllocationAmount -= info->commitedMemory;
+    s_imguiCurrentAllocationCount--;
+#endif //#if KAH_DEBUG
+    mem_cstd_free(info);
+}
 //=============================================================================
 
 //===API=======================================================================
@@ -134,6 +158,8 @@ void gfx_imgui_create(void* windowHandle){
     VkQueue* gfxQueue = gfx_vulkan_queue();
     VkAllocationCallbacks* gfxAllocCallbacks = gfx_vulkan_allocation_callbacks();
 
+    ImGui_SetAllocatorFunctions(gfx_imgui_cstd_alloc, gfx_imgui_mem_cstd_find_alloc_info, nullptr);
+
     constexpr uint32_t poolSize = 11;
     const VkDescriptorPoolSize descriptorPoolSizes[poolSize] = {
         {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
@@ -171,12 +197,19 @@ void gfx_imgui_create(void* windowHandle){
 #endif
 
     ImGuiIO* io = ImGui_GetIO();
-    io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    // io->ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-    io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    // io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-    io->BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-    io->BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+    io->ConfigFlags = ImGuiConfigFlags_None;
+    {
+        io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        // io->ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    }
+    io->BackendFlags = ImGuiBackendFlags_None;
+    {
+        io->BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+        io->BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+    }
+
     gfx_imgui_set_theme();
 
     GfxVulkanTargetAttachmentFormats* targetFormats = gfx_vulkan_target_attachment_formats();

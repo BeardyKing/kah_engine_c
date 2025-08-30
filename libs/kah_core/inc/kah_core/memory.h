@@ -14,6 +14,7 @@
 AllocInfo*  mem_cstd_alloc(size_t inBufferSize);
 void        mem_cstd_realloc(AllocInfo* allocInfo, size_t inBufferSize);
 void        mem_cstd_free(AllocInfo* allocInfo);
+AllocInfo*  mem_cstd_find_alloc_info(void* bufferAddress);
 
 AllocInfo*  mem_arena_alloc(size_t inBufferSize);
 void        mem_arena_realloc(AllocInfo* allocInfo, size_t inBufferSize);

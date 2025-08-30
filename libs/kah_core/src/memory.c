@@ -56,10 +56,9 @@ uint32_t alloc_info_get_next_free_index(){
 }
 
 uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
-    for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i)
-    {
-        if(&s_allocationTable.infos[i] == allocInfo)
-        {
+    //TODO: replace loop with find next set bit bitarr start at idx or hash table lookup
+    for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
+        if(&s_allocationTable.infos[i] == allocInfo){
             return i;
         }
     }
@@ -204,6 +203,21 @@ void mem_cstd_free(AllocInfo* allocInfo){
     free(allocInfo->bufferAddress);
     *allocInfo = (AllocInfo){};
     bitarray_clear_bit(&s_allocationTable.infoInUse.header, tableIndex);
+}
+
+AllocInfo* mem_cstd_find_alloc_info(void* bufferAddress){
+    //TODO: replace loop with find next set bit bitarr start at idx
+    for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
+        const bool inUse = bitarray_check_bit(&s_allocationTable.infoInUse.header, i);
+        if(inUse){
+            AllocInfo* info = &s_allocationTable.infos[i];
+            if(info->bufferAddress == bufferAddress){
+                return info;
+            }
+        }
+    }
+    core_assert_msg(false, "err: failed to find alloc info with address %p", bufferAddress);
+    return nullptr;
 }
 
 void mem_cstd_realloc(AllocInfo* allocInfo, size_t inBufferSize){

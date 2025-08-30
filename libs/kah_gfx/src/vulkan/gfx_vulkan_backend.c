@@ -118,6 +118,7 @@ static struct GfxBackend{
     uint32_t queueFamilyIndex;
 
     uint32_t currentGfxFrame;
+    bool windowNeedsResize;
 } s_gfx = {};
 
 static struct GfxDebug {
@@ -151,7 +152,7 @@ static GfxVulkanTargetAttachmentFormats s_targetAttachmentFormats = {};
 static Allocator gfx_allocator(){ return allocators()->cstd;}          // TODO: replace with gfx lifetime arena allocator
 static Allocator gfx_allocator_arena(){ return allocators()->arena;}   // TODO: replace with gfx frame arena
 
-static void gfx_create_data_structures(){
+static void gfx_data_structures_create(){
     s_gfx = (struct GfxBackend){};
     s_gfxDebug = (struct GfxDebug){};
     s_userArguments = (struct GfxUserArguments){ //TODO: replace with quake style CVAR system
@@ -181,7 +182,7 @@ static void gfx_create_data_structures(){
     s_gfx.supportedDeviceExtensions = dynamic_array_create(gfx_allocator(), sizeof(VkExtensionProperties), 0);
 }
 
-static void gfx_cleanup_data_structures(){
+static void gfx_data_structures_cleanup(){
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedInstanceExtensions);
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedValidationLayers);
     dynamic_array_cleanup(gfx_allocator(), &s_gfx.supportedphysicalDevices);
@@ -1124,10 +1125,7 @@ static void gfx_flush() {
     }
 }
 
-static void gfx_window_resize() {
-    if (!query_has_valid_extent_size()) {
-        return;
-    }
+static bool gfx_window_resize() {
     gfx_flush();
 
     gfx_color_buffer_cleanup();
@@ -1137,6 +1135,8 @@ static void gfx_window_resize() {
     gfx_swap_chain_create();
     gfx_color_buffer_create();
     gfx_depth_stencil_buffer_create();
+    s_gfx.windowNeedsResize = false;
+    return true;
 }
 
 static void gfx_command_begin_immediate_recording() {
@@ -1222,18 +1222,30 @@ static void gfx_render_frame(VkCommandBuffer cmdBuffer) {
     const VkResult submitRes = vkQueueSubmit(s_gfx.queue, 1, &submitInfo, s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
     core_assert(submitRes == VK_SUCCESS);
 }
+
+static bool gfx_check_window_needs_resize(VkResult result){
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        s_gfx.windowNeedsResize = true;
+    } else {
+        core_assert_msg(result == VK_SUCCESS, "err: failed to acquire swapchain");
+    }
+    return s_gfx.windowNeedsResize;
+}
 //=============================================================================
 
 //===API=======================================================================
 void gfx_update(){
-    s_gfx.swapChain.lastImageIndex = gfx_swap_chain_index();
-    const VkResult nextRes = gfx_acquire_next_swap_chain_image();
-    if (nextRes == VK_ERROR_OUT_OF_DATE_KHR) {
+    if(s_gfx.windowNeedsResize){
+        if(!query_has_valid_extent_size()){
+            return;
+        }
         gfx_window_resize();
-        return;
-    } else if (nextRes < 0) {
-        core_assert(nextRes == VK_SUCCESS);
     }
+
+    s_gfx.swapChain.lastImageIndex = gfx_swap_chain_index();
+    VkResult swapchainAcquireResult = gfx_acquire_next_swap_chain_image();
+    gfx_check_window_needs_resize(swapchainAcquireResult);
+
     vkWaitForFences(s_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()], true, UINT64_MAX);
     vkResetFences(s_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
     VkCommandBuffer cmdBuffer = s_gfx.commandBuffers[gfx_buffer_index()];
@@ -1246,9 +1258,9 @@ void gfx_update(){
     gfx_end_command_recording(cmdBuffer);
 
     gfx_render_frame(cmdBuffer);
-    gfx_present();
-    gfx_flush();
 
+    VkResult presentResult = gfx_present();
+    gfx_check_window_needs_resize(presentResult);
     s_gfx.currentGfxFrame++;
 }
 
@@ -1447,7 +1459,7 @@ VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
 
 //===INIT/SHUTDOWN=============================================================
 void gfx_create(void* windowHandle){
-    gfx_create_data_structures();
+    gfx_data_structures_create();
     gfx_task_graph_create();
     gfx_volk_create();
     gfx_instance_create();
@@ -1473,6 +1485,7 @@ void gfx_create(void* windowHandle){
 }
 
 void gfx_cleanup(){
+    gfx_flush();
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_imgui_cleanup();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
@@ -1492,7 +1505,7 @@ void gfx_cleanup(){
     gfx_instance_cleanup();
     gfx_volk_cleanup();
     gfx_task_graph_cleanup();
-    gfx_cleanup_data_structures();
+    gfx_data_structures_cleanup();
 }
 //=============================================================================
 

@@ -53,11 +53,6 @@ struct GfxSemaphores {
     VkSemaphore renderDone;
 }typedef GfxSemaphores;
 
-struct GfxSwapChainBuffers {
-    VkImage image;
-    VkImageView view;
-} typedef GfxSwapChainBuffers;
-
 struct GfxImage {
     VkImage image;
     VkImageView view;
@@ -78,7 +73,7 @@ struct GfxSwapChain {
     uint32_t currentImageIndex;
     uint32_t lastImageIndex;
     VkImage images[KAH_SWAP_CHAIN_IMAGE_COUNT];
-    GfxSwapChainBuffers buffers[KAH_SWAP_CHAIN_IMAGE_COUNT];
+    VkImageView views[KAH_SWAP_CHAIN_IMAGE_COUNT];
 
     uint32_t width;
     uint32_t height;
@@ -836,7 +831,7 @@ static void gfx_swap_chain_create(){
     //cleanup vulkan resources
     if (oldSwapChain != VK_NULL_HANDLE) {
         for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; i++) {
-            vkDestroyImageView(s_gfx.device, s_gfx.swapChain.buffers[i].view, s_gfx.allocCallback);
+            vkDestroyImageView(s_gfx.device, s_gfx.swapChain.views[i], s_gfx.allocCallback);
         }
         vkDestroySwapchainKHR(s_gfx.device, oldSwapChain, s_gfx.allocCallback);
     }
@@ -871,17 +866,16 @@ static void gfx_swap_chain_create(){
             }
         };
 
-        s_gfx.swapChain.buffers[i].image = s_gfx.swapChain.images[i];
-        swapChainImageViewInfo.image = s_gfx.swapChain.buffers[i].image;
+        swapChainImageViewInfo.image = s_gfx.swapChain.images[i];
 
-        const VkResult imageViewResult = vkCreateImageView(s_gfx.device, &swapChainImageViewInfo, s_gfx.allocCallback, &s_gfx.swapChain.buffers[i].view);
+        const VkResult imageViewResult = vkCreateImageView(s_gfx.device, &swapChainImageViewInfo, s_gfx.allocCallback, &s_gfx.swapChain.views[i]);
         core_assert_msg(imageViewResult == VK_SUCCESS, "err: Failed to create image view %u", i);
     }
 }
 
 static void gfx_swap_chain_cleanup(){
     for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; i++) {
-        vkDestroyImageView(s_gfx.device, s_gfx.swapChain.buffers[i].view, s_gfx.allocCallback);
+        vkDestroyImageView(s_gfx.device, s_gfx.swapChain.views[i], s_gfx.allocCallback);
     }
 
     core_assert_msg(s_gfx.swapChain.surface != VK_NULL_HANDLE,"err: swapchain surface has already been destroyed");
@@ -1272,7 +1266,7 @@ VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info()
 {
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = s_gfx.swapChain.buffers[gfx_swap_chain_index()].view,
+        .imageView = s_gfx.swapChain.views[gfx_swap_chain_index()],
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1283,7 +1277,7 @@ VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info()
 void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer){
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &s_gfx.swapChain.buffers[gfx_swap_chain_index()].image,
+            &s_gfx.swapChain.images[gfx_swap_chain_index()],
             0,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1321,7 +1315,7 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer){
 void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer){
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &s_gfx.swapChain.buffers[gfx_swap_chain_index()].image,
+            &s_gfx.swapChain.images[gfx_swap_chain_index()],
             0,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1355,7 +1349,7 @@ void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer){
 void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer){
     gfx_command_insert_memory_barrier(
         cmdBuffer,
-        &s_gfx.swapChain.buffers[gfx_swap_chain_index()].image,
+        &s_gfx.swapChain.images[gfx_swap_chain_index()],
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         0,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,

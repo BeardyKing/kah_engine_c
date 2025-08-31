@@ -14,6 +14,10 @@
 #include <backends/dcimgui_impl_win32.h>
 //=============================================================================
 
+//===EXTERNAL_STRUCTS==========================================================
+extern GlobalGfx g_gfx;
+//=============================================================================
+
 //===INTERNAL_STRUCTS==========================================================
 #if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
 CIMGUI_IMPL_API LRESULT cImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -152,12 +156,6 @@ void *gfx_imgui_get_proc_function_pointer() {
 
 //===INIT/SHUTDOWN=============================================================
 void gfx_imgui_create(void* windowHandle){
-    VkInstance* gfxInstance = gfx_vulkan_instance();
-    VkPhysicalDevice* gfxPhysicalDevice = gfx_vulkan_physical_device();
-    VkDevice* gfxDevice = gfx_vulkan_device();
-    VkQueue* gfxQueue = gfx_vulkan_queue();
-    VkAllocationCallbacks* gfxAllocCallbacks = gfx_vulkan_allocation_callbacks();
-
     ImGui_SetAllocatorFunctions(gfx_imgui_cstd_alloc, gfx_imgui_mem_cstd_find_alloc_info, nullptr);
 
     constexpr uint32_t poolSize = 11;
@@ -183,7 +181,7 @@ void gfx_imgui_create(void* windowHandle){
         .pPoolSizes = descriptorPoolSizes,
     };
 
-    const VkResult poolResult = vkCreateDescriptorPool(*gfxDevice, &descriptorPoolInfo, gfxAllocCallbacks, &s_imguiDescriptorPool);
+    const VkResult poolResult = vkCreateDescriptorPool(g_gfx.device, &descriptorPoolInfo, g_gfx.allocationCallbacks, &s_imguiDescriptorPool);
     core_assert(poolResult == VK_SUCCESS);
 
     ImGui_CreateContext(nullptr);
@@ -212,23 +210,24 @@ void gfx_imgui_create(void* windowHandle){
 
     gfx_imgui_set_theme();
 
-    GfxVulkanTargetAttachmentFormats* targetFormats = gfx_vulkan_target_attachment_formats();
+    VkFormat targetdepthFormat = gfx_vulkan_utils_find_depth_format(VK_IMAGE_TILING_OPTIMAL);
+    GfxVulkanTargetAttachmentFormats targetFormats = g_gfx.targetAttachmentFormats;
     ImGui_ImplVulkan_InitInfo imguiInitInfo = {
-        .Instance = *gfxInstance,
-        .PhysicalDevice = *gfxPhysicalDevice,
-        .Device = *gfxDevice,
-        .Queue = *gfxQueue,
+        .Instance = g_gfx.instance,
+        .PhysicalDevice = g_gfx.physicalDevice,
+        .Device = g_gfx.device,
+        .Queue = g_gfx.queue,
         .DescriptorPool = s_imguiDescriptorPool,
         .MinImageCount = 3,
         .ImageCount = 3,
-        .MSAASamples = gfx_vulkan_sample_count(),
+        .MSAASamples = g_gfx.sampleCount,
         .UseDynamicRendering = true,
         .PipelineRenderingCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
             .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &targetFormats->surfaceFormat.format,
-            .depthAttachmentFormat = targetFormats->depthFormat,
-            .stencilAttachmentFormat = targetFormats->depthFormat,
+            .pColorAttachmentFormats = &g_gfx.targetAttachmentFormats.surfaceFormat.format,
+            .depthAttachmentFormat = targetdepthFormat,
+            .stencilAttachmentFormat = targetdepthFormat,
         },
     };
 
@@ -236,8 +235,6 @@ void gfx_imgui_create(void* windowHandle){
 }
 
 void gfx_imgui_cleanup(){
-    VkDevice* gfxDevice = gfx_vulkan_device();
-    VkAllocationCallbacks* gfxAllocCallback = gfx_vulkan_allocation_callbacks();
     cImGui_ImplVulkan_Shutdown();
 #if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
     cImGui_ImplWin32_Shutdown();
@@ -247,7 +244,7 @@ void gfx_imgui_cleanup(){
     core_not_implemented();
 #endif
     ImGui_DestroyContext(nullptr);
-    vkDestroyDescriptorPool(*gfxDevice, s_imguiDescriptorPool, gfxAllocCallback);
+    vkDestroyDescriptorPool(g_gfx.device, s_imguiDescriptorPool, g_gfx.allocationCallbacks);
 }
 //=============================================================================
 #endif // #if CHECK_FEATURE(FEATURE_GFX_IMGUI)

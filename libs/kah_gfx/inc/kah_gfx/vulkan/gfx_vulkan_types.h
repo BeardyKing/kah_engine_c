@@ -3,10 +3,11 @@
 
 //===INCLUDES==================================================================
 #include <kah_gfx/vulkan/gfx_vulkan.h>
+
+#include <kah_math/vec2.h>
 //=============================================================================
 
 //===POOL_TYPES================================================================
-#define GFX_POOL_GFX_IMAGE_COUNT_MAX UINT16_MAX
 struct GfxImage {
     VkImage image;
     VkImageView view;
@@ -17,9 +18,30 @@ struct GfxImage {
 //===PUBLIC_TYPES==============================================================
 struct GfxVulkanTargetAttachmentFormats {
     VkSurfaceFormatKHR surfaceFormat;
-    VkFormat depthFormat;
     VkFormat colorFormat;
 } typedef GfxVulkanTargetAttachmentFormats;
+
+struct GlobalGfx{
+    VkInstance instance;
+    VkPhysicalDevice physicalDevice;
+    VkDevice device;
+    VkQueue queue;
+    VmaAllocator allocator;
+    VkAllocationCallbacks* allocationCallbacks;
+    VkSampleCountFlagBits sampleCount;
+    GfxVulkanTargetAttachmentFormats targetAttachmentFormats;
+}typedef GlobalGfx; //extern GlobalGfx g_gfx;
+
+enum GfxSizeType {
+    GFX_SIZE_TYPE_ABSOLUTE,
+    GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE,
+}typedef GfxSizeType;
+
+struct GfxAttachmentInfo {
+    VkFormat format;
+    GfxSizeType sizeType;
+    vec2u size;
+}typedef GfxAttachmentInfo;
 //=============================================================================
 
 #endif //GFX_VULKAN_TYPES_H

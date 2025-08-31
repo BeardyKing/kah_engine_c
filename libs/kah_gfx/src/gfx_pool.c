@@ -8,13 +8,13 @@
 
 //===INTERNAL==================================================================
 struct Pool{
-    DynamicArray buffer;
+    FixedArray buffer;
     BitArrayDynamic freeEntries;
 }typedef Pool;
 
 static Pool pool_create(Allocator allocator, uint32_t typeSize, uint32_t count){
     return (Pool){
-        .buffer = dynamic_array_create(allocator, typeSize, count),
+        .buffer = fixed_array_create(allocator, typeSize, count),
         .freeEntries = bitarray_dynamic_create(allocator, count),
     };
 }
@@ -32,7 +32,7 @@ static size_t pool_acquire_next_free_index(Pool* pool){
 }
 
 static void pool_release_index(Pool* pool, size_t index){
-    GfxImage* image = dynamic_array_buffer(&pool->buffer);
+    GfxImage* image = fixed_array_get(&pool->buffer, index);
     core_assert(image->image == VK_NULL_HANDLE);
     core_assert(image->view == VK_NULL_HANDLE);
     core_assert(image->alloc == VK_NULL_HANDLE);
@@ -56,7 +56,7 @@ GfxImageHandle gfx_pool_get_gfx_image_handle(){
 
 GfxImage* gfx_pool_get_gfx_image(GfxImageHandle handle){
     core_assert(handle < GFX_POOL_GFX_IMAGE_COUNT_MAX);
-    return dynamic_array_get(&s_pool.gfxImages.buffer, handle);
+    return fixed_array_get(&s_pool.gfxImages.buffer, handle);
 }
 
 void gfx_pool_release_gfx_image(GfxImageHandle handle){

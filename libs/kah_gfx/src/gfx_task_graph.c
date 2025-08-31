@@ -18,12 +18,6 @@ struct GfxRenderPass typedef GfxRenderPass;
 
 typedef void (*GfxRenderPassRun_cb)(VkCommandBuffer cmd);
 
-enum GfxSizeType {
-    SIZE_TYPE_ABSOLUTE,
-    SIZE_TYPE_SWAPCHAIN_RELATIVE,
-    SIZE_TYPE_INPUT_RELATIVE
-}typedef GfxSizeType;
-
 enum GfxRenderGraphQueueType {
     GFX_RENDER_GRAPH_QUEUE_GRAPHICS = 1 << 0,
     GFX_RENDER_GRAPH_QUEUE_COMPUTE = 1 << 1,

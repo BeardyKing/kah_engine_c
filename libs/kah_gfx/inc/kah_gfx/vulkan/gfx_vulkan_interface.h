@@ -7,13 +7,7 @@
 //=============================================================================
 
 //===API=======================================================================
-VkInstance* gfx_vulkan_instance();
-VkPhysicalDevice* gfx_vulkan_physical_device();
-VkDevice* gfx_vulkan_device();
-VkQueue* gfx_vulkan_queue();
-VkAllocationCallbacks* gfx_vulkan_allocation_callbacks();
-VkSampleCountFlagBits gfx_vulkan_sample_count();
-GfxVulkanTargetAttachmentFormats* gfx_vulkan_target_attachment_formats();
+vec2u gfx_vulkan_swapchain_size();
 //=============================================================================
 
 //===RENDER_TASKS==============================================================

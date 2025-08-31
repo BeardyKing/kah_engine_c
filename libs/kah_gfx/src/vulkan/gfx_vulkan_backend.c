@@ -19,6 +19,8 @@
 #include <kah_math/vec2.h>
 
 #include <stdio.h>
+
+#include "kah_gfx/vulkan/gfx_vulkan_resource.h"
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
@@ -46,6 +48,10 @@ do {                                                    \
 
 //HACK: 1.4 SDK is broken for me & fails on debug callbacks.
 #define FEATURE_GFX_VK_1_4 FEATURE_OFF
+//=============================================================================
+
+//===GLOBAL_STRUCTS============================================================
+GlobalGfx g_gfx = {};
 //=============================================================================
 
 //===INTERNAL_STRUCTS==========================================================
@@ -77,13 +83,6 @@ struct GfxSwapChain {
 static struct GfxBackend{
     uint32_t instanceVersion;
 
-    VmaAllocator allocator;
-
-    VkPhysicalDevice physicalDevice;
-    VkDevice device;
-    VkQueue queue;
-    VkInstance instance;
-
     GfxSwapChain swapChain;
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffers[KAH_SWAP_CHAIN_IMAGE_COUNT];
@@ -92,12 +91,8 @@ static struct GfxBackend{
 
     struct{
         GfxImage color;
-        GfxImage depthStencil;
+        GfxImageHandle depthStencilHandle;
     } backBuffer;
-
-    VkAllocationCallbacks* allocCallback;
-
-    VkSampleCountFlagBits sampleCount;
 
     VkPhysicalDeviceProperties deviceProperties;
     VkPhysicalDeviceFeatures deviceFeatures;
@@ -140,7 +135,6 @@ static struct GfxFeatures{
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
 } s_gfxFeatures = {};
 
-static GfxVulkanTargetAttachmentFormats s_targetAttachmentFormats = {};
 //=============================================================================
 
 //===INTERNAL_FUNCTIONS========================================================
@@ -198,9 +192,9 @@ static void gfx_volk_cleanup(){
 static void gfx_vma_create(){
     const VmaAllocatorCreateInfo allocatorInfo = (VmaAllocatorCreateInfo){
         .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
-        .physicalDevice = s_gfx.physicalDevice,
-        .device = s_gfx.device ,
-        .pAllocationCallbacks = s_gfx.allocCallback,
+        .physicalDevice = g_gfx.physicalDevice,
+        .device = g_gfx.device ,
+        .pAllocationCallbacks = g_gfx.allocationCallbacks,
         .pVulkanFunctions = &(VmaVulkanFunctions){
             .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
             .vkGetDeviceProcAddr = vkGetDeviceProcAddr,
@@ -229,7 +223,7 @@ static void gfx_vma_create(){
             .vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements,
             .vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements
         },
-        .instance = s_gfx.instance,
+        .instance = g_gfx.instance,
         // .vulkanApiVersion = ,
         // .preferredLargeHeapBlockSize = ,
         // .pDeviceMemoryCallbacks = ,
@@ -237,12 +231,12 @@ static void gfx_vma_create(){
         // .pTypeExternalMemoryHandleTypes =
     };
 
-    const VkResult vmaResult = vmaCreateAllocator( &allocatorInfo, &s_gfx.allocator );
+    const VkResult vmaResult = vmaCreateAllocator( &allocatorInfo, &g_gfx.allocator );
     core_assert_msg(vmaResult == VK_SUCCESS, "err: failed to init VMA");
 }
 
 static void gfx_vma_cleanup(){
-    vmaDestroyAllocator(s_gfx.allocator);
+    vmaDestroyAllocator(g_gfx.allocator);
 }
 
 static uint32_t gfx_find_supported_instance_extension_index(const char* extensionName){
@@ -367,17 +361,17 @@ static void gfx_instance_create(){
         .ppEnabledExtensionNames = dynamic_array_buffer(&usedInstanceExtensions),
     };
 
-    const VkResult result = vkCreateInstance(&instanceInfo, s_gfx.allocCallback, &s_gfx.instance);
+    const VkResult result = vkCreateInstance(&instanceInfo, g_gfx.allocationCallbacks, &g_gfx.instance);
     core_assert_msg(result == VK_SUCCESS, "err: failed to create vulkan instance");
 
-    volkLoadInstance(s_gfx.instance); // load instnace function pointers
+    volkLoadInstance(g_gfx.instance); // load instnace function pointers
     core_assert(vkDestroyInstance != VK_NULL_HANDLE); // validate callbacks are setup
     //=========================================================================
 }
 
 static void gfx_instance_cleanup(){
-    core_assert_msg(s_gfx.instance != VK_NULL_HANDLE, "err: VkInstance has already been destroyed");
-    vkDestroyInstance(s_gfx.instance, s_gfx.allocCallback);
+    core_assert_msg(g_gfx.instance != VK_NULL_HANDLE, "err: VkInstance has already been destroyed");
+    vkDestroyInstance(g_gfx.instance, g_gfx.allocationCallbacks);
 }
 
 static VkBool32 VKAPI_PTR validation_message_callback(
@@ -417,12 +411,12 @@ static void gfx_debug_callbacks_create() {
         .messageType = KAH_VK_DEBUG_UTILS_MESSAGE_TYPE,
         .pfnUserCallback = validation_message_callback,
     };
-    vkCreateDebugUtilsMessengerEXT(s_gfx.instance, &messengerCreateInfo, s_gfx.allocCallback, &s_gfxDebug.debugUtilsMessenger);
+    vkCreateDebugUtilsMessengerEXT(g_gfx.instance, &messengerCreateInfo, g_gfx.allocationCallbacks, &s_gfxDebug.debugUtilsMessenger);
 }
 
 static void gfx_debug_callbacks_cleanup() {
     core_assert_msg(s_gfxDebug.debugUtilsMessenger != VK_NULL_HANDLE, "err: debug utils messenger has already been destroyed");
-    vkDestroyDebugUtilsMessengerEXT(s_gfx.instance, s_gfxDebug.debugUtilsMessenger, s_gfx.allocCallback);
+    vkDestroyDebugUtilsMessengerEXT(g_gfx.instance, s_gfxDebug.debugUtilsMessenger, g_gfx.allocationCallbacks);
     s_gfxDebug.debugUtilsMessenger = VK_NULL_HANDLE;
 }
 
@@ -505,25 +499,25 @@ static VkSampleCountFlagBits set_target_sample_count(const VkPhysicalDevicePrope
 
 static void gfx_physical_device_create(){
     core_assert(s_gfx.supportedphysicalDevices.current == 0);
-    vkEnumeratePhysicalDevices(s_gfx.instance, &s_gfx.supportedphysicalDevices.current, nullptr);
+    vkEnumeratePhysicalDevices(g_gfx.instance, &s_gfx.supportedphysicalDevices.current, nullptr);
     core_assert_msg(s_gfx.supportedphysicalDevices.current != 0, "err: did not find any vulkan compatible physical devices");
     dynamic_array_resize(gfx_allocator(),&s_gfx.supportedphysicalDevices, s_gfx.supportedphysicalDevices.current);
 
     VkPhysicalDevice* physicalDevices = dynamic_array_buffer(&s_gfx.supportedphysicalDevices);
-    vkEnumeratePhysicalDevices(s_gfx.instance, &s_gfx.supportedphysicalDevices.count, physicalDevices);
+    vkEnumeratePhysicalDevices(g_gfx.instance, &s_gfx.supportedphysicalDevices.count, physicalDevices);
 
     debug_print_supported_physical_devices_info();
 
     // TODO:GFX: Add fallback support for `best` GPU based on intended workload, if no argument is provided we fallback to device [0]
     uint32_t selectedDevice = s_userArguments.selectedPhysicalDeviceIndex;
     core_assert_msg(selectedDevice < s_gfx.supportedphysicalDevices.count, "err: selecting physical vulkan device that is out of range");
-    s_gfx.physicalDevice = physicalDevices[selectedDevice];
+    g_gfx.physicalDevice = physicalDevices[selectedDevice];
 
-    vkGetPhysicalDeviceProperties(s_gfx.physicalDevice, &s_gfx.deviceProperties);
-    s_gfx.sampleCount = set_target_sample_count(s_gfx.deviceProperties, s_userArguments.msaa);
+    vkGetPhysicalDeviceProperties(g_gfx.physicalDevice, &s_gfx.deviceProperties);
+    g_gfx.sampleCount = set_target_sample_count(s_gfx.deviceProperties, s_userArguments.msaa);
 
-    vkGetPhysicalDeviceFeatures(s_gfx.physicalDevice, &s_gfx.deviceFeatures);
-    vkGetPhysicalDeviceMemoryProperties(s_gfx.physicalDevice, &s_gfx.deviceMemoryProperties);
+    vkGetPhysicalDeviceFeatures(g_gfx.physicalDevice, &s_gfx.deviceFeatures);
+    vkGetPhysicalDeviceMemoryProperties(g_gfx.physicalDevice, &s_gfx.deviceMemoryProperties);
 
     debug_print_selected_physical_device_info();
 }
@@ -531,17 +525,17 @@ static void gfx_physical_device_create(){
 static void gfx_surface_cleanup() {
     // gfx_create_surface(...) exists in gfx_vulkan_surface.h / gfx_vulkan_surface_windows.cpp
     core_assert_msg(s_gfx.swapChain.surface != VK_NULL_HANDLE, "err: VkSurface has already been destroyed");
-    vkDestroySurfaceKHR(s_gfx.instance, s_gfx.swapChain.surface, s_gfx.allocCallback);
+    vkDestroySurfaceKHR(g_gfx.instance, s_gfx.swapChain.surface, g_gfx.allocationCallbacks);
     s_gfx.swapChain.surface = VK_NULL_HANDLE;
 }
 
 static void gfx_physical_device_queues_create(){
-    vkEnumerateDeviceExtensionProperties(s_gfx.physicalDevice, nullptr, &s_gfx.supportedDeviceExtensions.current, nullptr);
+    vkEnumerateDeviceExtensionProperties(g_gfx.physicalDevice, nullptr, &s_gfx.supportedDeviceExtensions.current, nullptr);
     dynamic_array_resize(gfx_allocator(), &s_gfx.supportedDeviceExtensions, s_gfx.supportedDeviceExtensions.current);
     VkExtensionProperties* supportedDeviceExtensions = dynamic_array_buffer(&s_gfx.supportedDeviceExtensions);
 
     if (s_gfx.supportedDeviceExtensions.count > 0) {
-        vkEnumerateDeviceExtensionProperties(s_gfx.physicalDevice, nullptr, &s_gfx.supportedDeviceExtensions.count, supportedDeviceExtensions);
+        vkEnumerateDeviceExtensionProperties(g_gfx.physicalDevice, nullptr, &s_gfx.supportedDeviceExtensions.count, supportedDeviceExtensions);
     }
 
     for (uint32_t i = 0; i < s_gfx.supportedDeviceExtensions.count; ++i) {
@@ -549,11 +543,11 @@ static void gfx_physical_device_queues_create(){
     }
 
     DynamicArray selectedQueueFamilies = dynamic_array_create(gfx_allocator_arena(), sizeof(VkQueueFamilyProperties),0);
-    vkGetPhysicalDeviceQueueFamilyProperties(s_gfx.physicalDevice, &selectedQueueFamilies.current, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(g_gfx.physicalDevice, &selectedQueueFamilies.current, nullptr);
     dynamic_array_resize(gfx_allocator_arena(), &selectedQueueFamilies,selectedQueueFamilies.current);
 
     VkQueueFamilyProperties* queueFamilies = dynamic_array_buffer(&selectedQueueFamilies);
-    vkGetPhysicalDeviceQueueFamilyProperties(s_gfx.physicalDevice, &selectedQueueFamilies.count, queueFamilies);
+    vkGetPhysicalDeviceQueueFamilyProperties(g_gfx.physicalDevice, &selectedQueueFamilies.count, queueFamilies);
 
     struct QueueInfo {
         uint32_t targetFlags;
@@ -571,7 +565,7 @@ static void gfx_physical_device_queues_create(){
 
     for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < selectedQueueFamilies.count; ++queueFamilyIndex){
         VkBool32 supportsPresent = VK_FALSE;
-        VkResult presentResult = vkGetPhysicalDeviceSurfaceSupportKHR(s_gfx.physicalDevice,queueFamilyIndex,s_gfx.swapChain.surface,&supportsPresent);
+        VkResult presentResult = vkGetPhysicalDeviceSurfaceSupportKHR(g_gfx.physicalDevice,queueFamilyIndex,s_gfx.swapChain.surface,&supportsPresent);
 
         const uint32_t currentQueueFlags = queueFamilies[queueFamilyIndex].queueFlags;
 
@@ -647,7 +641,7 @@ static void gfx_physical_device_queues_create(){
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
     }
 
-    vkGetPhysicalDeviceFeatures2(s_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
+    vkGetPhysicalDeviceFeatures2(g_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
     core_assert_msg(s_gfxFeatures.features12.descriptorIndexing, "err: Descriptor indexing is required");
     core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
     core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
@@ -668,19 +662,19 @@ static void gfx_physical_device_queues_create(){
         .ppEnabledExtensionNames = dynamic_array_buffer(&usedDeviceExtensions)
     };
 
-    vkCreateDevice(s_gfx.physicalDevice, &deviceCreateInfo, s_gfx.allocCallback, &s_gfx.device);
-    core_assert_msg(s_gfx.device, "err: Failed to create vkDevice");
+    vkCreateDevice(g_gfx.physicalDevice, &deviceCreateInfo, g_gfx.allocationCallbacks, &g_gfx.device);
+    core_assert_msg(g_gfx.device, "err: Failed to create vkDevice");
 
-    vkGetDeviceQueue(s_gfx.device, graphicsQueueInfo.queueIndex, 0, &s_gfx.queue);
-    core_assert_msg(s_gfx.queue, "err: Failed to create graphics queue");
+    vkGetDeviceQueue(g_gfx.device, graphicsQueueInfo.queueIndex, 0, &g_gfx.queue);
+    core_assert_msg(g_gfx.queue, "err: Failed to create graphics queue");
 
     s_gfx.queueFamilyIndex =  graphicsQueueInfo.queueIndex;
 }
 
 static void gfx_physical_device_queues_cleanup(){
-    vkDestroyDevice(s_gfx.device, s_gfx.allocCallback);
-    s_gfx.device = VK_NULL_HANDLE;
-    s_gfx.queue = VK_NULL_HANDLE;
+    vkDestroyDevice(g_gfx.device, g_gfx.allocationCallbacks);
+    g_gfx.device = VK_NULL_HANDLE;
+    g_gfx.queue = VK_NULL_HANDLE;
 }
 
 static void gfx_command_pool_create(){
@@ -690,20 +684,20 @@ static void gfx_command_pool_create(){
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex =  s_gfx.queueFamilyIndex,
     };
-    const VkResult result = vkCreateCommandPool(s_gfx.device, &commandPoolInfo, s_gfx.allocCallback, &s_gfx.commandPool);
+    const VkResult result = vkCreateCommandPool(g_gfx.device, &commandPoolInfo, g_gfx.allocationCallbacks, &s_gfx.commandPool);
     core_assert_msg(result == VK_SUCCESS, "err: failed to create graphics command pool");
 }
 
 static void gfx_command_pool_cleanup(){
-    vkDestroyCommandPool(s_gfx.device, s_gfx.commandPool, s_gfx.allocCallback);
+    vkDestroyCommandPool(g_gfx.device, s_gfx.commandPool, g_gfx.allocationCallbacks);
     s_gfx.commandPool = VK_NULL_HANDLE;
 }
 
 static void gfx_semaphores_create(){
     for (uint32_t i = 0; i < KAH_SWAP_CHAIN_IMAGE_COUNT; ++i) {
         VkSemaphoreCreateInfo semaphoreInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-        const VkResult presentRes = vkCreateSemaphore(s_gfx.device, &semaphoreInfo, s_gfx.allocCallback, &s_gfx.semaphores[i].presentDone);
-        const VkResult renderRes = vkCreateSemaphore(s_gfx.device, &semaphoreInfo, s_gfx.allocCallback, &s_gfx.semaphores[i].renderDone);
+        const VkResult presentRes = vkCreateSemaphore(g_gfx.device, &semaphoreInfo, g_gfx.allocationCallbacks, &s_gfx.semaphores[i].presentDone);
+        const VkResult renderRes = vkCreateSemaphore(g_gfx.device, &semaphoreInfo, g_gfx.allocationCallbacks, &s_gfx.semaphores[i].renderDone);
         core_assert_msg(presentRes == VK_SUCCESS, "err: failed to create present semaphore");
         core_assert_msg(renderRes  == VK_SUCCESS, "err: failed to create render semaphore");
     }
@@ -712,21 +706,21 @@ static void gfx_semaphores_create(){
 
 static void gfx_semaphores_cleanup(){
     for (uint32_t i = 0; i < KAH_SWAP_CHAIN_IMAGE_COUNT; ++i) {
-        vkDestroySemaphore(s_gfx.device, s_gfx.semaphores[i].presentDone, s_gfx.allocCallback);
-        vkDestroySemaphore(s_gfx.device, s_gfx.semaphores[i].renderDone, s_gfx.allocCallback);
+        vkDestroySemaphore(g_gfx.device, s_gfx.semaphores[i].presentDone, g_gfx.allocationCallbacks);
+        vkDestroySemaphore(g_gfx.device, s_gfx.semaphores[i].renderDone, g_gfx.allocationCallbacks);
     }
 }
 
 
 static VkPresentModeKHR select_present_mode() {
     DynamicArray devicePresentModes = dynamic_array_create(gfx_allocator_arena(), sizeof(VkPresentModeKHR), 0);
-    const VkResult presentRes = vkGetPhysicalDeviceSurfacePresentModesKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &devicePresentModes.current, nullptr);
+    const VkResult presentRes = vkGetPhysicalDeviceSurfacePresentModesKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &devicePresentModes.current, nullptr);
     core_assert_msg(presentRes == VK_SUCCESS, "err: failed to get physical device surface present modes");
     core_assert(devicePresentModes.current > 0);
     dynamic_array_resize(gfx_allocator_arena(), &devicePresentModes, devicePresentModes.current);
 
     VkPresentModeKHR* presentModes = dynamic_array_buffer(&devicePresentModes);
-    const VkResult populateRes = vkGetPhysicalDeviceSurfacePresentModesKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &devicePresentModes.count, presentModes);
+    const VkResult populateRes = vkGetPhysicalDeviceSurfacePresentModesKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &devicePresentModes.count, presentModes);
     core_assert_msg(populateRes == VK_SUCCESS, "err: failed to populate present modes array");
 
     VkPresentModeKHR selectedPresentMode = {VK_PRESENT_MODE_FIFO_KHR};
@@ -763,7 +757,7 @@ static void gfx_swap_chain_create(){
     const VkSwapchainKHR oldSwapChain = s_gfx.swapChain.swapChain;
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities = {0};
-    const VkResult surfRes = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &surfaceCapabilities);
+    const VkResult surfRes = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &surfaceCapabilities);
     core_assert_msg(surfRes == VK_SUCCESS, "err: failed to get physical device surface capabilities");
 
     VkExtent2D swapChainExtent = {};
@@ -778,7 +772,7 @@ static void gfx_swap_chain_create(){
 
 
     const VkPresentModeKHR swapChainPresentMode = select_present_mode();
-    s_targetAttachmentFormats.surfaceFormat = gfx_vulkan_utils_select_surface_format();
+    g_gfx.targetAttachmentFormats.surfaceFormat = gfx_vulkan_utils_select_surface_format();
     const VkCompositeAlphaFlagBitsKHR compositeAlphaFormat = select_composite_alpha_format(&surfaceCapabilities);
     core_assert(surfaceCapabilities.maxImageCount >= KAH_SWAP_CHAIN_IMAGE_COUNT );
     core_assert(surfaceCapabilities.minImageCount <= KAH_SWAP_CHAIN_IMAGE_COUNT );
@@ -806,8 +800,8 @@ static void gfx_swap_chain_create(){
         .flags = 0,
         .surface = s_gfx.swapChain.surface,
         .minImageCount = s_gfx.swapChain.imageCount,
-        .imageFormat = s_targetAttachmentFormats.surfaceFormat.format,
-        .imageColorSpace = s_targetAttachmentFormats.surfaceFormat.colorSpace,
+        .imageFormat = g_gfx.targetAttachmentFormats.surfaceFormat.format,
+        .imageColorSpace = g_gfx.targetAttachmentFormats.surfaceFormat.colorSpace,
         .imageExtent = swapChainExtent,
         .imageArrayLayers = 1,
         .imageUsage = swapchainImageUsage,
@@ -821,19 +815,19 @@ static void gfx_swap_chain_create(){
         .oldSwapchain = oldSwapChain
     };
 
-    const VkResult swapChainRes = vkCreateSwapchainKHR(s_gfx.device, &swapChainInfo, s_gfx.allocCallback, &s_gfx.swapChain.swapChain);
+    const VkResult swapChainRes = vkCreateSwapchainKHR(g_gfx.device, &swapChainInfo, g_gfx.allocationCallbacks, &s_gfx.swapChain.swapChain);
     core_assert_msg(swapChainRes == VK_SUCCESS, "err: failed to create swap chain");
 
     //cleanup vulkan resources
     if (oldSwapChain != VK_NULL_HANDLE) {
         for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; i++) {
-            vkDestroyImageView(s_gfx.device, s_gfx.swapChain.views[i], s_gfx.allocCallback);
+            vkDestroyImageView(g_gfx.device, s_gfx.swapChain.views[i], g_gfx.allocationCallbacks);
         }
-        vkDestroySwapchainKHR(s_gfx.device, oldSwapChain, s_gfx.allocCallback);
+        vkDestroySwapchainKHR(g_gfx.device, oldSwapChain, g_gfx.allocationCallbacks);
     }
 
-    vkGetSwapchainImagesKHR(s_gfx.device, s_gfx.swapChain.swapChain, &s_gfx.swapChain.imageCount, nullptr);
-    VkResult swapChainImageResult = vkGetSwapchainImagesKHR(s_gfx.device,  s_gfx.swapChain.swapChain, &s_gfx.swapChain.imageCount, &s_gfx.swapChain.images[0] );
+    vkGetSwapchainImagesKHR(g_gfx.device, s_gfx.swapChain.swapChain, &s_gfx.swapChain.imageCount, nullptr);
+    VkResult swapChainImageResult = vkGetSwapchainImagesKHR(g_gfx.device,  s_gfx.swapChain.swapChain, &s_gfx.swapChain.imageCount, &s_gfx.swapChain.images[0] );
     core_assert_msg(swapChainImageResult == VK_SUCCESS, "err: failed to re-create swap chain images");
 
     VkComponentMapping         components;
@@ -846,7 +840,7 @@ static void gfx_swap_chain_create(){
             .flags = 0,
             .image = nullptr,
             .viewType = VK_IMAGE_VIEW_TYPE_2D ,
-            .format = s_targetAttachmentFormats.surfaceFormat.format,
+            .format = g_gfx.targetAttachmentFormats.surfaceFormat.format,
             .components = (VkComponentMapping){
                 .r = VK_COMPONENT_SWIZZLE_R,
                 .g = VK_COMPONENT_SWIZZLE_G,
@@ -864,18 +858,18 @@ static void gfx_swap_chain_create(){
 
         swapChainImageViewInfo.image = s_gfx.swapChain.images[i];
 
-        const VkResult imageViewResult = vkCreateImageView(s_gfx.device, &swapChainImageViewInfo, s_gfx.allocCallback, &s_gfx.swapChain.views[i]);
+        const VkResult imageViewResult = vkCreateImageView(g_gfx.device, &swapChainImageViewInfo, g_gfx.allocationCallbacks, &s_gfx.swapChain.views[i]);
         core_assert_msg(imageViewResult == VK_SUCCESS, "err: Failed to create image view %u", i);
     }
 }
 
 static void gfx_swap_chain_cleanup(){
     for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; i++) {
-        vkDestroyImageView(s_gfx.device, s_gfx.swapChain.views[i], s_gfx.allocCallback);
+        vkDestroyImageView(g_gfx.device, s_gfx.swapChain.views[i], g_gfx.allocationCallbacks);
     }
 
     core_assert_msg(s_gfx.swapChain.surface != VK_NULL_HANDLE,"err: swapchain surface has already been destroyed");
-    vkDestroySwapchainKHR(s_gfx.device, s_gfx.swapChain.swapChain, s_gfx.allocCallback);
+    vkDestroySwapchainKHR(g_gfx.device, s_gfx.swapChain.swapChain, g_gfx.allocationCallbacks);
     s_gfx.swapChain.swapChain = VK_NULL_HANDLE;
 }
 
@@ -887,14 +881,14 @@ static void gfx_command_buffers_create(){
         .commandBufferCount = KAH_SWAP_CHAIN_IMAGE_COUNT,
     };
 
-    VkResult cmdBuffResult = vkAllocateCommandBuffers(s_gfx.device, &gfxCommandBufferInfo, s_gfx.commandBuffers);
+    VkResult cmdBuffResult = vkAllocateCommandBuffers(g_gfx.device, &gfxCommandBufferInfo, s_gfx.commandBuffers);
     core_assert_msg(cmdBuffResult == VK_SUCCESS, "err: Failed to create graphics command buffer");
 
     //Consider adding upload cmd buffer.
 }
 
 static void gfx_command_buffers_cleanup(){
-    vkFreeCommandBuffers(s_gfx.device, s_gfx.commandPool, KAH_SWAP_CHAIN_IMAGE_COUNT, s_gfx.commandBuffers);
+    vkFreeCommandBuffers(g_gfx.device, s_gfx.commandPool, KAH_SWAP_CHAIN_IMAGE_COUNT, s_gfx.commandBuffers);
     for (uint32_t i = 0; i < KAH_SWAP_CHAIN_IMAGE_COUNT; ++i) {
         s_gfx.commandBuffers[i] = VK_NULL_HANDLE;
     }
@@ -909,24 +903,24 @@ static void gfx_fences_create() {
     };
 
     for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; ++i) {
-        const VkResult fenceRes = vkCreateFence(s_gfx.device, &fenceCreateInfo, s_gfx.allocCallback, &s_gfx.graphicsFenceWait[i]);
+        const VkResult fenceRes = vkCreateFence(g_gfx.device, &fenceCreateInfo, g_gfx.allocationCallbacks, &s_gfx.graphicsFenceWait[i]);
         core_assert_msg(fenceRes == VK_SUCCESS, "err: Failed to create graphics fence [%u]", i);
     }
 }
 
 static void gfx_fences_cleanup() {
     for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; ++i) {
-        vkDestroyFence(s_gfx.device, s_gfx.graphicsFenceWait[i], s_gfx.allocCallback);
+        vkDestroyFence(g_gfx.device, s_gfx.graphicsFenceWait[i], g_gfx.allocationCallbacks);
         s_gfx.graphicsFenceWait[i] = VK_NULL_HANDLE;
     }
 }
 
 static void gfx_color_buffer_create(){
-    s_targetAttachmentFormats.colorFormat = s_targetAttachmentFormats.surfaceFormat.format; // Consider adding a new find best format function
+    g_gfx.targetAttachmentFormats.colorFormat = g_gfx.targetAttachmentFormats.surfaceFormat.format; // Consider adding a new find best format function
     VkImageCreateInfo colourImageInfo = (VkImageCreateInfo){
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = s_targetAttachmentFormats.colorFormat,
+        .format = g_gfx.targetAttachmentFormats.colorFormat,
         .extent = (VkExtent3D){
             .width = s_gfx.swapChain.width,
             .height = s_gfx.swapChain.height,
@@ -934,7 +928,7 @@ static void gfx_color_buffer_create(){
         },
         .mipLevels = 1,
         .arrayLayers = 1,
-        .samples = s_gfx.sampleCount,
+        .samples = g_gfx.sampleCount,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -946,17 +940,17 @@ static void gfx_color_buffer_create(){
         .flags = VMA_ALLOCATION_CREATE_DONT_BIND_BIT
     };
 
-    const VkResult createImgRes = vmaCreateImage(s_gfx.allocator, &colourImageInfo, &allocInfo, &s_gfx.backBuffer.color.image, &s_gfx.backBuffer.color.alloc, nullptr);
+    const VkResult createImgRes = vmaCreateImage(g_gfx.allocator, &colourImageInfo, &allocInfo, &s_gfx.backBuffer.color.image, &s_gfx.backBuffer.color.alloc, nullptr);
     core_assert(createImgRes == VK_SUCCESS);
 
-    VkResult bindRes = vmaBindImageMemory( s_gfx.allocator, s_gfx.backBuffer.color.alloc, s_gfx.backBuffer.color.image );
+    VkResult bindRes = vmaBindImageMemory( g_gfx.allocator, s_gfx.backBuffer.color.alloc, s_gfx.backBuffer.color.image );
     core_assert_msg(bindRes == VK_SUCCESS, "err: Failed to bind color buffer");
 
     VkImageViewCreateInfo colorImageViewInfo = (VkImageViewCreateInfo){
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = s_gfx.backBuffer.color.image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = s_targetAttachmentFormats.colorFormat,
+        .format = g_gfx.targetAttachmentFormats.colorFormat,
         .subresourceRange = (VkImageSubresourceRange){
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel = 0,
@@ -966,84 +960,32 @@ static void gfx_color_buffer_create(){
         },
     };
 
-    const VkResult createRes = vkCreateImageView(s_gfx.device, &colorImageViewInfo, s_gfx.allocCallback, &s_gfx.backBuffer.color.view);
+    const VkResult createRes = vkCreateImageView(g_gfx.device, &colorImageViewInfo, g_gfx.allocationCallbacks, &s_gfx.backBuffer.color.view);
     core_assert_msg(createRes == VK_SUCCESS, "err: Failed to create color image view");
 }
 
-void gfx_image_free(GfxImage* image){
-    vmaDestroyImage(s_gfx.allocator, image->image, image->alloc);
-    vkDestroyImageView(s_gfx.device, image->view, s_gfx.allocCallback);
-}
-
 static void gfx_color_buffer_cleanup(){
-    gfx_image_free(&s_gfx.backBuffer.color);
+    vmaDestroyImage(g_gfx.allocator, s_gfx.backBuffer.color.image, s_gfx.backBuffer.color.alloc);
+    vkDestroyImageView(g_gfx.device, s_gfx.backBuffer.color.view, g_gfx.allocationCallbacks);
 }
 
 static void gfx_depth_stencil_buffer_create() {
-    s_targetAttachmentFormats.depthFormat = gfx_vulkan_utils_find_depth_format(VK_IMAGE_TILING_OPTIMAL);
-    const VkImageCreateInfo depthImageInfo = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format = s_targetAttachmentFormats.depthFormat,
-            .extent = {
-                    .width = s_gfx.swapChain.width,
-                    .height = s_gfx.swapChain.height,
-                    .depth =  1
-            },
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = s_gfx.sampleCount,
-            .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-    };
-
-    VmaAllocationCreateInfo allocInfo = {
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        .requiredFlags = (VkMemoryPropertyFlags)VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        .flags = VMA_ALLOCATION_CREATE_DONT_BIND_BIT,
-    };
-
-    const VkResult createImgRes = vmaCreateImage(s_gfx.allocator, &depthImageInfo, &allocInfo, &s_gfx.backBuffer.depthStencil.image, &s_gfx.backBuffer.depthStencil.alloc, nullptr);
-    core_assert(createImgRes == VK_SUCCESS);
-
-    VkResult bindRes = vmaBindImageMemory( s_gfx.allocator, s_gfx.backBuffer.depthStencil.alloc, s_gfx.backBuffer.depthStencil.image );
-    core_assert_msg(bindRes == VK_SUCCESS, "err: Failed to bind depth stencil buffer");
-
-    VkImageViewCreateInfo depthImageViewInfo = (VkImageViewCreateInfo){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = s_gfx.backBuffer.depthStencil.image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = s_targetAttachmentFormats.depthFormat,
-            .subresourceRange = {
-                    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-            }
-    };
-
-    if (s_targetAttachmentFormats.depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
-        depthImageViewInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-    }
-
-    const VkResult createRes = vkCreateImageView(s_gfx.device, &depthImageViewInfo, nullptr, &s_gfx.backBuffer.depthStencil.view);
-    core_assert_msg(createRes == VK_SUCCESS, "err: Failed to create depth image view");
+    s_gfx.backBuffer.depthStencilHandle = gfx_resource_image_depth_create(&(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE});
 }
 
 static void gfx_depth_stencil_buffer_cleanup(){
-    gfx_image_free(&s_gfx.backBuffer.depthStencil);
+    gfx_resource_image_release(s_gfx.backBuffer.depthStencilHandle);
 }
 
 static void gfx_pipeline_cache_create(){
     VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
     pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-    const VkResult cacheRes = vkCreatePipelineCache(s_gfx.device, &pipelineCacheCreateInfo, s_gfx.allocCallback, &s_gfx.pipelineCache);
+    const VkResult cacheRes = vkCreatePipelineCache(g_gfx.device, &pipelineCacheCreateInfo, g_gfx.allocationCallbacks, &s_gfx.pipelineCache);
     core_assert_msg(cacheRes == VK_SUCCESS, "err: Failed to create pipeline cache");
 }
 
 static void gfx_pipeline_cache_cleanup(){
-    vkDestroyPipelineCache(s_gfx.device, s_gfx.pipelineCache, s_gfx.allocCallback);
+    vkDestroyPipelineCache(g_gfx.device, s_gfx.pipelineCache, g_gfx.allocationCallbacks);
 }
 
 static uint32_t gfx_swap_chain_index() {
@@ -1064,7 +1006,7 @@ static vec2i gfx_screen_size() {
 
 static VkResult gfx_acquire_next_swap_chain_image() {
     return vkAcquireNextImageKHR(
-            s_gfx.device,
+            g_gfx.device,
             s_gfx.swapChain.swapChain,
             UINT64_MAX,
             s_gfx.semaphores[gfx_last_swap_chain_index()].presentDone,
@@ -1076,7 +1018,7 @@ static VkResult gfx_acquire_next_swap_chain_image() {
 
 static bool query_has_valid_extent_size() {
     VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &surfaceCapabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &surfaceCapabilities);
     return surfaceCapabilities.currentExtent.width != 0 || surfaceCapabilities.currentExtent.height != 0;
 }
 
@@ -1095,7 +1037,7 @@ static VkResult gfx_present() {
         presentInfo.waitSemaphoreCount = 1;
     }
 
-    return vkQueuePresentKHR(s_gfx.queue, &presentInfo);
+    return vkQueuePresentKHR(g_gfx.queue, &presentInfo);
 }
 
 static void gfx_begin_command_recording(VkCommandBuffer cmdBuffer) {
@@ -1115,8 +1057,8 @@ static void gfx_end_command_recording(const VkCommandBuffer cmdBuffer) {
 }
 
 static void gfx_flush() {
-    if (s_gfx.device != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(s_gfx.device);
+    if (g_gfx.device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(g_gfx.device);
     }
 }
 
@@ -1153,8 +1095,8 @@ static void gfx_command_end_immediate_recording() {
         .pCommandBuffers = &s_gfx.commandBuffers[gfx_buffer_index()],
     };
     //TODO:GFX replace immediate submit with transfer immediate submit.
-    vkQueueSubmit(s_gfx.queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(s_gfx.queue);
+    vkQueueSubmit(g_gfx.queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(g_gfx.queue);
 }
 
 static void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
@@ -1214,7 +1156,7 @@ static void gfx_render_frame(VkCommandBuffer cmdBuffer) {
         .pSignalSemaphores = &s_gfx.semaphores[gfx_swap_chain_index()].renderDone,
     };
 
-    const VkResult submitRes = vkQueueSubmit(s_gfx.queue, 1, &submitInfo, s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
+    const VkResult submitRes = vkQueueSubmit(g_gfx.queue, 1, &submitInfo, s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
     core_assert(submitRes == VK_SUCCESS);
 }
 
@@ -1241,8 +1183,8 @@ void gfx_update(){
     VkResult swapchainAcquireResult = gfx_acquire_next_swap_chain_image();
     gfx_check_window_needs_resize(swapchainAcquireResult);
 
-    vkWaitForFences(s_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()], true, UINT64_MAX);
-    vkResetFences(s_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
+    vkWaitForFences(g_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()], true, UINT64_MAX);
+    vkResetFences(g_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
     VkCommandBuffer cmdBuffer = s_gfx.commandBuffers[gfx_buffer_index()];
     vkResetCommandBuffer(cmdBuffer, 0);
 
@@ -1262,7 +1204,7 @@ void gfx_update(){
 VkRenderingAttachmentInfoKHR get_swapchain_depth_stencil_attachment_info(){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = s_gfx.backBuffer.depthStencil.view,
+        .imageView = gfx_pool_get_gfx_image(s_gfx.backBuffer.depthStencilHandle)->view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1367,33 +1309,36 @@ void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer){
     );
 }
 //===API/GFX_VULKAN_INTERFACE==================================================
-VkInstance* gfx_vulkan_instance(){
-    return &s_gfx.instance;
-}
+// VkInstance gfx_vulkan_instance(){
+//     return s_gfx.instance;
+// }
+//
+// VkPhysicalDevice gfx_vulkan_physical_device(){
+//     return s_gfx.physicalDevice;
+// }
+//
+// VkDevice gfx_vulkan_device(){
+//     return s_gfx.device;
+// }
+//
+// VkQueue gfx_vulkan_queue(){
+//     return s_gfx.queue;
+// }
+//
+// VkAllocationCallbacks* gfx_vulkan_allocation_callbacks(){
+//     return s_gfx.allocCallback;
+// }
+//
+// VkSampleCountFlagBits gfx_vulkan_sample_count(){
+//     return s_gfx.sampleCount;
+// }
+//
+// GfxVulkanTargetAttachmentFormats* gfx_vulkan_target_attachment_formats(){
+//     return &s_targetAttachmentFormats;
+// }
 
-VkPhysicalDevice* gfx_vulkan_physical_device(){
-    return &s_gfx.physicalDevice;
-}
-
-VkDevice* gfx_vulkan_device(){
-    return &s_gfx.device;
-}
-
-VkQueue* gfx_vulkan_queue(){
-    return &s_gfx.queue;
-}
-
-VkAllocationCallbacks* gfx_vulkan_allocation_callbacks(){
-    return s_gfx.allocCallback;
-}
-
-VkSampleCountFlagBits gfx_vulkan_sample_count(){
-    return s_gfx.sampleCount;
-}
-
-GfxVulkanTargetAttachmentFormats* gfx_vulkan_target_attachment_formats()
-{
-    return &s_targetAttachmentFormats;
+vec2u gfx_vulkan_swapchain_size(){
+    return (vec2u){s_gfx.swapChain.width,s_gfx.swapChain.height};
 }
 //=============================================================================
 
@@ -1411,7 +1356,7 @@ VkFormat gfx_vulkan_utils_find_depth_format(const VkImageTiling desiredTilingFor
 
     for (uint32_t i = 0; i < FORMAT_CANDIDATE_COUNT; ++i) {
         VkFormatProperties props;
-        vkGetPhysicalDeviceFormatProperties(s_gfx.physicalDevice, candidates[i], &props);
+        vkGetPhysicalDeviceFormatProperties(g_gfx.physicalDevice, candidates[i], &props);
 
         if ((desiredTilingFormat == VK_IMAGE_TILING_LINEAR) && ((props.linearTilingFeatures & features) == features)) {
             return candidates[i];
@@ -1426,11 +1371,11 @@ VkFormat gfx_vulkan_utils_find_depth_format(const VkImageTiling desiredTilingFor
 
 VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
     DynamicArray deviceSurfaceFormats = dynamic_array_create(gfx_allocator_arena(), sizeof(vkGetPhysicalDeviceSurfaceFormatsKHR), 0);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.current, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.current, nullptr);
     dynamic_array_resize(gfx_allocator_arena(), &deviceSurfaceFormats, deviceSurfaceFormats.current);
 
     VkSurfaceFormatKHR *surfaceFormats = dynamic_array_buffer(&deviceSurfaceFormats);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(s_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.count, surfaceFormats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &deviceSurfaceFormats.count, surfaceFormats);
 
     // Try select best surface format
     constexpr VkSurfaceFormatKHR KAH_TARGET_SWAPCHAIN_FORMAT = {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
@@ -1461,7 +1406,7 @@ void gfx_create(void* windowHandle){
     gfx_instance_create();
     gfx_debug_callbacks_create();
     gfx_physical_device_create();
-    gfx_surface_create(windowHandle, &s_gfx.instance, &s_gfx.swapChain.surface);
+    gfx_surface_create(windowHandle, &g_gfx.instance, &s_gfx.swapChain.surface);
     gfx_physical_device_queues_create();
     gfx_vma_create();
     gfx_command_pool_create();

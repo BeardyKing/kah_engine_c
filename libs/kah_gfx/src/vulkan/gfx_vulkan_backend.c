@@ -2,6 +2,7 @@
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/gfx_task_graph.h>
 #include <kah_gfx/gfx_logging.h>
+#include <kah_gfx/gfx_pool.h>
 #include <kah_gfx/vulkan/gfx_vulkan.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_surface.h>
@@ -52,12 +53,6 @@ struct GfxSemaphores {
     VkSemaphore presentDone;
     VkSemaphore renderDone;
 }typedef GfxSemaphores;
-
-struct GfxImage {
-    VkImage image;
-    VkImageView view;
-    VmaAllocation alloc;
-} typedef GfxImage;
 
 struct GfxBuffer {
     VkBuffer buffer;
@@ -1459,6 +1454,7 @@ VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
 
 //===INIT/SHUTDOWN=============================================================
 void gfx_create(void* windowHandle){
+    gfx_pool_create();
     gfx_data_structures_create();
     gfx_task_graph_create();
     gfx_volk_create();
@@ -1506,6 +1502,7 @@ void gfx_cleanup(){
     gfx_volk_cleanup();
     gfx_task_graph_cleanup();
     gfx_data_structures_cleanup();
+    gfx_pool_cleanup();
 }
 //=============================================================================
 

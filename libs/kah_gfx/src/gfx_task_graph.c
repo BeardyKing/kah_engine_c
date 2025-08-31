@@ -56,7 +56,7 @@ static const char* task_graph_arena_string(const char* inStr){
     core_assert(s_tgStringArena.alloc);
     const size_t inStrLen = strlen(inStr) + 1;
     if((s_tgStringArena.count + inStrLen) < s_tgStringArena.alloc->commitedMemory){
-        core_assert(nameLen < TG_RENDER_PASS_NAME_MAX);
+        core_assert(inStrLen < TG_RENDER_PASS_NAME_MAX);
         char* outStr = &((char*)s_tgStringArena.alloc->bufferAddress)[s_tgStringArena.count];
         s_tgStringArena.count += inStrLen;
         sprintf(outStr, "%s\0", inStr);

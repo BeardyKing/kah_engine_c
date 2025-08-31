@@ -3,6 +3,7 @@
 //===INCLUDES==================================================================
 #include <kah_core/assert.h>
 #include <kah_core/utils.h>
+#include <kah_core/allocators.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -26,8 +27,9 @@ struct BitArray_1024{   BitArrayHeader header; uint64_t buf[16];  } typedef BitA
 struct BitArray_2048{   BitArrayHeader header; uint64_t buf[32];  } typedef BitArray_2048;
 struct BitArray_4096{   BitArrayHeader header; uint64_t buf[64];  } typedef BitArray_4096;
 struct BitArray_8192{   BitArrayHeader header; uint64_t buf[128]; } typedef BitArray_8192;
+struct BitArray_16384{  BitArrayHeader header; uint64_t buf[256]; } typedef BitArray_16384;
 
-struct BitArrayDynamic{ BitArrayHeader header; uint64_t* buf;     } typedef BitArrayDynamic;
+struct BitArrayDynamic{ AllocInfo* info; BitArrayHeader header; uint64_t* buf; } typedef BitArrayDynamic;
 //=============================================================================
 
 //===API=======================================================================
@@ -45,6 +47,9 @@ size_t bitarray_count_trailing_zeros(BitArrayHeader* header);
 size_t bitarray_count_leading_zeros(BitArrayHeader* header);
 size_t bitarray_find_first_unset_bit(BitArrayHeader* header);
 void   bitarray_print(BitArrayHeader* header);
+
+BitArrayDynamic bitarray_dynamic_create(Allocator allocator, size_t count);
+void bitarray_dynamic_cleanup(Allocator allocator, BitArrayDynamic* bitarrayDynamic);
 //=============================================================================
 
 //===BITSET_UTILS==============================================================

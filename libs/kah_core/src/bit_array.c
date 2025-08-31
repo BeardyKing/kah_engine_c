@@ -268,5 +268,21 @@ size_t bitarray_find_first_unset_bit(BitArrayHeader* header) {
     return UINT64_MAX;
 }
 
+BitArrayDynamic bitarray_dynamic_create(Allocator allocator, size_t count){
+    //Note: Really all bitarray sizes should match up to mem_word_size() for platform perf reasons.
+    const size_t wordCount = align_up(count, KAH_BIT_ARRAY_ALIGNMENT) / KAH_BIT_ARRAY_ALIGNMENT;
+    AllocInfo* info = allocator.alloc( wordCount * sizeof(uint64_t));
+    return (BitArrayDynamic){
+        .info = info,
+        .header.bitCount = count,
+        .buf = info->bufferAddress
+    };
+}
 
+void bitarray_dynamic_cleanup(Allocator allocator, BitArrayDynamic* bitarrayDynamic){
+    core_assert(bitarrayDynamic != nullptr);
+    allocator.free(bitarrayDynamic->info);
+    *bitarrayDynamic = (BitArrayDynamic){};
+}
 //=============================================================================
+

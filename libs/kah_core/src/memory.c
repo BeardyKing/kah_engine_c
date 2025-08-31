@@ -94,6 +94,7 @@ static CORE_FORCE_INLINE AllocInfo* internal_page_alloc(size_t inBufferSize){
     const size_t pageSize = mem_page_size();
     const size_t alignedReserveSize = align_up(inBufferSize, pageSize);
 
+    //TODO: Change inBufferSize to be some minimal commited memory size (only an issue for windows) & compare perf cost.
     void* reserved = internal_virtual_reserve_and_commit_win32(alignedReserveSize, inBufferSize);
     if (reserved == nullptr) {
         return nullptr;

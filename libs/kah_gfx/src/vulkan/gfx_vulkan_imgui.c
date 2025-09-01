@@ -211,7 +211,7 @@ void gfx_imgui_create(void* windowHandle){
     gfx_imgui_set_theme();
 
     VkFormat targetdepthFormat = gfx_vulkan_utils_find_depth_format(VK_IMAGE_TILING_OPTIMAL);
-    GfxVulkanTargetAttachmentFormats targetFormats = g_gfx.targetAttachmentFormats;
+    VkFormat targetColourFormat = gfx_vulkan_utils_select_surface_format().format;
     ImGui_ImplVulkan_InitInfo imguiInitInfo = {
         .Instance = g_gfx.instance,
         .PhysicalDevice = g_gfx.physicalDevice,
@@ -225,7 +225,7 @@ void gfx_imgui_create(void* windowHandle){
         .PipelineRenderingCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
             .colorAttachmentCount = 1,
-            .pColorAttachmentFormats = &g_gfx.targetAttachmentFormats.surfaceFormat.format,
+            .pColorAttachmentFormats = &targetColourFormat,
             .depthAttachmentFormat = targetdepthFormat,
             .stencilAttachmentFormat = targetdepthFormat,
         },

@@ -8,6 +8,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_surface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
+#include <kah_gfx/vulkan/gfx_vulkan_resource.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -19,8 +20,6 @@
 #include <kah_math/vec2.h>
 
 #include <stdio.h>
-
-#include "kah_gfx/vulkan/gfx_vulkan_resource.h"
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
@@ -90,9 +89,9 @@ static struct GfxBackend{
     GfxSemaphores semaphores[KAH_SWAP_CHAIN_IMAGE_COUNT];
 
     struct{
-        GfxImage color;
+        GfxImageHandle colorHandle;
         GfxImageHandle depthStencilHandle;
-    } backBuffer;
+    } renderTarget;
 
     VkPhysicalDeviceProperties deviceProperties;
     VkPhysicalDeviceFeatures deviceFeatures;
@@ -772,7 +771,7 @@ static void gfx_swap_chain_create(){
 
 
     const VkPresentModeKHR swapChainPresentMode = select_present_mode();
-    g_gfx.targetAttachmentFormats.surfaceFormat = gfx_vulkan_utils_select_surface_format();
+    const VkSurfaceFormatKHR surfaceFormat = gfx_vulkan_utils_select_surface_format();
     const VkCompositeAlphaFlagBitsKHR compositeAlphaFormat = select_composite_alpha_format(&surfaceCapabilities);
     core_assert(surfaceCapabilities.maxImageCount >= KAH_SWAP_CHAIN_IMAGE_COUNT );
     core_assert(surfaceCapabilities.minImageCount <= KAH_SWAP_CHAIN_IMAGE_COUNT );
@@ -800,8 +799,8 @@ static void gfx_swap_chain_create(){
         .flags = 0,
         .surface = s_gfx.swapChain.surface,
         .minImageCount = s_gfx.swapChain.imageCount,
-        .imageFormat = g_gfx.targetAttachmentFormats.surfaceFormat.format,
-        .imageColorSpace = g_gfx.targetAttachmentFormats.surfaceFormat.colorSpace,
+        .imageFormat = surfaceFormat.format,
+        .imageColorSpace = surfaceFormat.colorSpace,
         .imageExtent = swapChainExtent,
         .imageArrayLayers = 1,
         .imageUsage = swapchainImageUsage,
@@ -840,7 +839,7 @@ static void gfx_swap_chain_create(){
             .flags = 0,
             .image = nullptr,
             .viewType = VK_IMAGE_VIEW_TYPE_2D ,
-            .format = g_gfx.targetAttachmentFormats.surfaceFormat.format,
+            .format = surfaceFormat.format,
             .components = (VkComponentMapping){
                 .r = VK_COMPONENT_SWIZZLE_R,
                 .g = VK_COMPONENT_SWIZZLE_G,
@@ -915,66 +914,16 @@ static void gfx_fences_cleanup() {
     }
 }
 
-static void gfx_color_buffer_create(){
-    g_gfx.targetAttachmentFormats.colorFormat = g_gfx.targetAttachmentFormats.surfaceFormat.format; // Consider adding a new find best format function
-    VkImageCreateInfo colourImageInfo = (VkImageCreateInfo){
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = g_gfx.targetAttachmentFormats.colorFormat,
-        .extent = (VkExtent3D){
-            .width = s_gfx.swapChain.width,
-            .height = s_gfx.swapChain.height,
-            .depth = 1
-        },
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = g_gfx.sampleCount,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-
-    VmaAllocationCreateInfo allocInfo = {
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        .requiredFlags = (VkMemoryPropertyFlags)VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        .flags = VMA_ALLOCATION_CREATE_DONT_BIND_BIT
-    };
-
-    const VkResult createImgRes = vmaCreateImage(g_gfx.allocator, &colourImageInfo, &allocInfo, &s_gfx.backBuffer.color.image, &s_gfx.backBuffer.color.alloc, nullptr);
-    core_assert(createImgRes == VK_SUCCESS);
-
-    VkResult bindRes = vmaBindImageMemory( g_gfx.allocator, s_gfx.backBuffer.color.alloc, s_gfx.backBuffer.color.image );
-    core_assert_msg(bindRes == VK_SUCCESS, "err: Failed to bind color buffer");
-
-    VkImageViewCreateInfo colorImageViewInfo = (VkImageViewCreateInfo){
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = s_gfx.backBuffer.color.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = g_gfx.targetAttachmentFormats.colorFormat,
-        .subresourceRange = (VkImageSubresourceRange){
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-
-    const VkResult createRes = vkCreateImageView(g_gfx.device, &colorImageViewInfo, g_gfx.allocationCallbacks, &s_gfx.backBuffer.color.view);
-    core_assert_msg(createRes == VK_SUCCESS, "err: Failed to create color image view");
+static void gfx_render_target_create(){
+    //Colour
+    s_gfx.renderTarget.colorHandle = gfx_resource_image_colour_create(&(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE});
+    //Depth
+    s_gfx.renderTarget.depthStencilHandle = gfx_resource_image_depth_create(&(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE});
 }
 
-static void gfx_color_buffer_cleanup(){
-    vmaDestroyImage(g_gfx.allocator, s_gfx.backBuffer.color.image, s_gfx.backBuffer.color.alloc);
-    vkDestroyImageView(g_gfx.device, s_gfx.backBuffer.color.view, g_gfx.allocationCallbacks);
-}
-
-static void gfx_depth_stencil_buffer_create() {
-    s_gfx.backBuffer.depthStencilHandle = gfx_resource_image_depth_create(&(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE});
-}
-
-static void gfx_depth_stencil_buffer_cleanup(){
-    gfx_resource_image_release(s_gfx.backBuffer.depthStencilHandle);
+static void gfx_render_target_cleanup(){
+    gfx_resource_image_release(s_gfx.renderTarget.colorHandle);
+    gfx_resource_image_release(s_gfx.renderTarget.depthStencilHandle);
 }
 
 static void gfx_pipeline_cache_create(){
@@ -1065,13 +1014,11 @@ static void gfx_flush() {
 static bool gfx_window_resize() {
     gfx_flush();
 
-    gfx_color_buffer_cleanup();
-    gfx_depth_stencil_buffer_cleanup();
+    gfx_render_target_cleanup();
     gfx_swap_chain_cleanup();
 
     gfx_swap_chain_create();
-    gfx_color_buffer_create();
-    gfx_depth_stencil_buffer_create();
+    gfx_render_target_create();
     s_gfx.windowNeedsResize = false;
     return true;
 }
@@ -1204,7 +1151,7 @@ void gfx_update(){
 VkRenderingAttachmentInfoKHR get_swapchain_depth_stencil_attachment_info(){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = gfx_pool_get_gfx_image(s_gfx.backBuffer.depthStencilHandle)->view,
+        .imageView = gfx_pool_get_gfx_image(s_gfx.renderTarget.depthStencilHandle)->view,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1223,10 +1170,22 @@ VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info()
     };
 }
 
+VkRenderingAttachmentInfoKHR get_render_target_color_attachment_info(){
+    return (VkRenderingAttachmentInfoKHR){
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView = gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->view,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.color = {{0.5f, 0.092f, 0.167f, 1.0f}},},
+    };
+}
+
 void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer){
+
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &s_gfx.swapChain.images[gfx_swap_chain_index()],
+            &gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
             0,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1236,7 +1195,7 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer){
             (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
     );
     {
-        VkRenderingAttachmentInfoKHR colorAttachment = get_swapchain_color_attachment_info();
+        VkRenderingAttachmentInfoKHR colorAttachment = get_render_target_color_attachment_info();
         VkRenderingAttachmentInfoKHR depthStencilAttachment = get_swapchain_depth_stencil_attachment_info();
 
         const VkRenderingInfoKHR renderingInfo = (VkRenderingInfoKHR){
@@ -1264,7 +1223,7 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer){
 void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer){
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &s_gfx.swapChain.images[gfx_swap_chain_index()],
+            &gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
             0,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1274,7 +1233,7 @@ void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer){
             (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
         );
 
-    VkRenderingAttachmentInfoKHR colorAttachment = get_swapchain_color_attachment_info();
+    VkRenderingAttachmentInfoKHR colorAttachment = get_render_target_color_attachment_info();
     VkRenderingAttachmentInfoKHR depthStencilAttachment = get_swapchain_depth_stencil_attachment_info();
 
     const VkRenderingInfoKHR renderingInfo = (VkRenderingInfoKHR){
@@ -1295,6 +1254,68 @@ void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer){
 #endif // CHECK_FEATURE(FEATURE_GFX_IMGUI)
 }
 
+
+void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer) {
+    gfx_command_insert_memory_barrier(
+            cmdBuffer,
+            &s_gfx.swapChain.images[gfx_swap_chain_index()],
+            0,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
+    );
+
+    gfx_command_insert_memory_barrier(
+            cmdBuffer,
+            &gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
+    );
+
+    const VkImageBlit blitRegion = {
+            .srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
+            .srcOffsets = {
+                    {.x = 0, .y = 0, .z = 0},
+                    {.x = (int32_t)(s_gfx.swapChain.width), .y = (int32_t)(s_gfx.swapChain.height), .z = 1}
+            },
+            .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
+            .dstOffsets = {
+                    {.x = 0, .y = 0, .z = 0},
+                    {.x = (int32_t)(s_gfx.swapChain.width), .y = (int32_t)( s_gfx.swapChain.height), .z = 1}
+            },
+    };
+
+    vkCmdBlitImage(
+            cmdBuffer,
+            gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            s_gfx.swapChain.images[gfx_swap_chain_index()],
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1, &blitRegion,
+            VK_FILTER_LINEAR
+    );
+
+    gfx_command_insert_memory_barrier(
+            cmdBuffer,
+            &s_gfx.swapChain.images[gfx_swap_chain_index()],
+            0,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
+        );
+}
+
 void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer){
     gfx_command_insert_memory_barrier(
         cmdBuffer,
@@ -1309,34 +1330,6 @@ void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer){
     );
 }
 //===API/GFX_VULKAN_INTERFACE==================================================
-// VkInstance gfx_vulkan_instance(){
-//     return s_gfx.instance;
-// }
-//
-// VkPhysicalDevice gfx_vulkan_physical_device(){
-//     return s_gfx.physicalDevice;
-// }
-//
-// VkDevice gfx_vulkan_device(){
-//     return s_gfx.device;
-// }
-//
-// VkQueue gfx_vulkan_queue(){
-//     return s_gfx.queue;
-// }
-//
-// VkAllocationCallbacks* gfx_vulkan_allocation_callbacks(){
-//     return s_gfx.allocCallback;
-// }
-//
-// VkSampleCountFlagBits gfx_vulkan_sample_count(){
-//     return s_gfx.sampleCount;
-// }
-//
-// GfxVulkanTargetAttachmentFormats* gfx_vulkan_target_attachment_formats(){
-//     return &s_targetAttachmentFormats;
-// }
-
 vec2u gfx_vulkan_swapchain_size(){
     return (vec2u){s_gfx.swapChain.width,s_gfx.swapChain.height};
 }
@@ -1414,8 +1407,7 @@ void gfx_create(void* windowHandle){
     gfx_swap_chain_create();
     gfx_command_buffers_create();
     gfx_fences_create();
-    gfx_color_buffer_create();
-    gfx_depth_stencil_buffer_create();
+    gfx_render_target_create();
     gfx_pipeline_cache_create();
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
@@ -1432,8 +1424,7 @@ void gfx_cleanup(){
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
     gfx_pipeline_cache_cleanup();
-    gfx_depth_stencil_buffer_cleanup();
-    gfx_color_buffer_cleanup();
+    gfx_render_target_cleanup();
     gfx_fences_cleanup();
     gfx_command_buffers_cleanup();
     gfx_swap_chain_cleanup();

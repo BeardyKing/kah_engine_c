@@ -14,6 +14,7 @@ vec2u gfx_vulkan_swapchain_size();
 void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer);
 void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer);
 void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer);
+void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer);
 //=============================================================================
 
 //===UTILS=====================================================================

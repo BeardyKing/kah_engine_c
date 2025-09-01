@@ -16,11 +16,6 @@ struct GfxImage {
 //=============================================================================
 
 //===PUBLIC_TYPES==============================================================
-struct GfxVulkanTargetAttachmentFormats {
-    VkSurfaceFormatKHR surfaceFormat;
-    VkFormat colorFormat;
-} typedef GfxVulkanTargetAttachmentFormats;
-
 struct GlobalGfx{
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
@@ -29,7 +24,6 @@ struct GlobalGfx{
     VmaAllocator allocator;
     VkAllocationCallbacks* allocationCallbacks;
     VkSampleCountFlagBits sampleCount;
-    GfxVulkanTargetAttachmentFormats targetAttachmentFormats;
 }typedef GlobalGfx; //extern GlobalGfx g_gfx;
 
 enum GfxSizeType {

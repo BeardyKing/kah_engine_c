@@ -87,6 +87,11 @@ void gfx_task_graph_build(){
         rpImGui->dispatch = gfx_vulkan_imgui_run;
     }
     {
+        GfxRenderPass* blitImageToSwapchain = render_pass_create("gfx_blit_to_swapchain");
+        blitImageToSwapchain->queue = GFX_RENDER_GRAPH_QUEUE_GRAPHICS;
+        blitImageToSwapchain->dispatch = gfx_vulkan_blit_image_to_swapchain_run;
+    }
+    {
         GfxRenderPass* rpPresent = render_pass_create("gfx_vulkan_prepare_present_run");
         rpPresent->queue = GFX_RENDER_GRAPH_QUEUE_GRAPHICS;
         rpPresent->dispatch = gfx_vulkan_prepare_present_run;

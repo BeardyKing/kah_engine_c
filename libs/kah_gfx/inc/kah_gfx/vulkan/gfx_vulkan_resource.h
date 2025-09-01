@@ -7,6 +7,7 @@
 
 //===API=======================================================================
 GfxImageHandle gfx_resource_image_depth_create(GfxAttachmentInfo* info);
+GfxImageHandle gfx_resource_image_colour_create(GfxAttachmentInfo* info);
 void gfx_resource_image_release(GfxImageHandle gfxHandle);
 //=============================================================================
 

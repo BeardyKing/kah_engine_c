@@ -19,7 +19,7 @@
 #define ALLOC_TABLE_INVALID_INDEX UINT32_MAX
 
 #define MEM_ARENA_BUFFER_SIZE ( 1 * KAH_MiB )
-#define MEM_MAX_ARENA_ALLOCATIONS 256
+#define MEM_MAX_ARENA_ALLOCATIONS 256 * ( KAH_DEBUG ? 4 : 1 )
 struct ArenaData
 {
     AllocInfo infos[MEM_MAX_ARENA_ALLOCATIONS];
@@ -28,11 +28,11 @@ struct ArenaData
     size_t current;
 } typedef ArenaData;
 
-#define MEM_MAX_DYNAMIC_ALLOCATIONS 256
+#define MEM_MAX_DYNAMIC_ALLOCATIONS 1024 * ( KAH_DEBUG ? 4 : 1 )
 struct AllocTable
 {
     AllocInfo infos[MEM_MAX_DYNAMIC_ALLOCATIONS];
-    BitArray_256 infoInUse;
+    BitArray_4096 infoInUse;
 } typedef AllocTable;
 //=============================================================================
 
@@ -329,7 +329,8 @@ size_t mem_page_size(){
 //===INIT/SHUTDOWN=============================================================
 void mem_create(){
     {
-        s_allocationTable = (AllocTable){.infoInUse.header.bitCount = 256, .infoInUse.buf = {0ULL, 0ULL, 0ULL, 0ULL}};
+        s_allocationTable = (AllocTable){.infoInUse.header.bitCount = MEM_MAX_DYNAMIC_ALLOCATIONS};
+        bitarray_clear_bit_range(&s_allocationTable.infoInUse.header, 0, MEM_MAX_DYNAMIC_ALLOCATIONS);
         s_arenaAllocInfo = mem_cstd_alloc(sizeof(ArenaData));
         s_arenaData = (ArenaData*)s_arenaAllocInfo->bufferAddress;
     }

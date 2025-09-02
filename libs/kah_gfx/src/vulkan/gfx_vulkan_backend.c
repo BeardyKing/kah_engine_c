@@ -1148,7 +1148,7 @@ void gfx_update(){
     s_gfx.currentGfxFrame++;
 }
 
-VkRenderingAttachmentInfoKHR get_swapchain_depth_stencil_attachment_info(){
+VkRenderingAttachmentInfoKHR get_render_target_depth_stencil_attachment_info(){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
         .imageView = gfx_pool_get_gfx_image(s_gfx.renderTarget.depthStencilHandle)->view,
@@ -1195,8 +1195,8 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer){
             (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
     );
     {
-        VkRenderingAttachmentInfoKHR colorAttachment = get_render_target_color_attachment_info();
-        VkRenderingAttachmentInfoKHR depthStencilAttachment = get_swapchain_depth_stencil_attachment_info();
+        VkRenderingAttachmentInfo colorAttachment = get_render_target_color_attachment_info();
+        VkRenderingAttachmentInfo depthStencilAttachment = get_render_target_depth_stencil_attachment_info();
 
         const VkRenderingInfoKHR renderingInfo = (VkRenderingInfoKHR){
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
@@ -1234,7 +1234,7 @@ void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer){
         );
 
     VkRenderingAttachmentInfoKHR colorAttachment = get_render_target_color_attachment_info();
-    VkRenderingAttachmentInfoKHR depthStencilAttachment = get_swapchain_depth_stencil_attachment_info();
+    VkRenderingAttachmentInfoKHR depthStencilAttachment = get_render_target_depth_stencil_attachment_info();
 
     const VkRenderingInfoKHR renderingInfo = (VkRenderingInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,

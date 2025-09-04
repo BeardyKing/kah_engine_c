@@ -125,13 +125,16 @@ static struct GfxFeatures{
     VkPhysicalDeviceVulkan11Features features11;
     VkPhysicalDeviceVulkan12Features features12;
     VkPhysicalDeviceVulkan13Features features13;
-    // VkPhysicalDeviceVulkan14Features features14;
+#if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
+    VkPhysicalDeviceVulkan14Features features14;
+#endif
 
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainFeatures;
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicState1Features;
     VkPhysicalDeviceExtendedDynamicState2FeaturesEXT dynamicState2Features;
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT dynamicState3Features;
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
+    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timelineSemaphoreFeatures;
 } s_gfxFeatures = {};
 
 //=============================================================================
@@ -161,7 +164,8 @@ static void gfx_data_structures_create(){
         .dynamicState1Features =    (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT } ,
         .dynamicState2Features =    (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT } ,
         .dynamicState3Features =    (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT } ,
-        .dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR }
+        .dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR },
+        .timelineSemaphoreFeatures = (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR },
     };
 
     s_gfx.supportedInstanceExtensions = dynamic_array_create(gfx_allocator(), sizeof(VkExtensionProperties),0);
@@ -591,7 +595,7 @@ static void gfx_physical_device_queues_create(){
         .pQueuePriorities = &graphicsQueuePriority
     };
 
-    DynamicArray usedDeviceExtensions = dynamic_array_create(gfx_allocator_arena(), sizeof(const char*), 7);
+    DynamicArray usedDeviceExtensions = dynamic_array_create(gfx_allocator_arena(), sizeof(const char*), 8);
 
     const char* swapChainName        = gfx_find_supported_device_extension_name( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
     const char* dynamicRenderingName = gfx_find_supported_device_extension_name( VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME );
@@ -600,6 +604,7 @@ static void gfx_physical_device_queues_create(){
     const char* extDynamicState2     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME );
     const char* extDynamicState3     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME );
     const char* swapchainMaintence1  = gfx_find_supported_device_extension_name( VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME );
+    const char* timelineSemaphore    = gfx_find_supported_device_extension_name( VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME );
 
     s_gfxFeatures.deviceFeatures.pNext = &s_gfxFeatures.features11;
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,2,0)){
@@ -639,10 +644,15 @@ static void gfx_physical_device_queues_create(){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
     }
+    if(timelineSemaphore && s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,2,0) ){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.timelineSemaphoreFeatures);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &timelineSemaphore);
+    }
 
     vkGetPhysicalDeviceFeatures2(g_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
     core_assert_msg(s_gfxFeatures.features12.descriptorIndexing, "err: Descriptor indexing is required");
     core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
+    core_assert_msg(s_gfxFeatures.features12.timelineSemaphore || s_gfxFeatures.timelineSemaphoreFeatures.timelineSemaphore, "err: Timeline semaphores is required");
     core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
 
     const char** extName = dynamic_array_buffer(&usedDeviceExtensions);

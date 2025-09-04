@@ -1,7 +1,7 @@
 #ifndef GFX_TASK_GRAPH_H
 #define GFX_TASK_GRAPH_H
 
-//===INCLUDES=======================================================================
+//===INCLUDES==================================================================
 #include <kah_gfx/vulkan/gfx_vulkan.h> // TODO: Make task graph backend agnostic.
 //=============================================================================
 

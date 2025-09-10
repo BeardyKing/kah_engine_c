@@ -655,6 +655,8 @@ static void gfx_physical_device_queues_create(){
     core_assert_msg(s_gfxFeatures.features12.timelineSemaphore || s_gfxFeatures.timelineSemaphoreFeatures.timelineSemaphore, "err: Timeline semaphores is required");
     core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
 
+    s_gfxFeatures.deviceFeatures.features.robustBufferAccess = false; //Fixes VUID-VkDeviceCreateInfo-robustBufferAccess-10247 when used with descriptorIndexing.
+
     const char** extName = dynamic_array_buffer(&usedDeviceExtensions);
     for (uint32_t i = 0; i < usedDeviceExtensions.current; ++i){
         gfx_log_info("Selected device extensions: %s \n", extName[i]);
@@ -733,7 +735,7 @@ static VkPresentModeKHR select_present_mode() {
     core_assert_msg(populateRes == VK_SUCCESS, "err: failed to populate present modes array");
 
     VkPresentModeKHR selectedPresentMode = {VK_PRESENT_MODE_FIFO_KHR};
-    VkPresentModeKHR preferredMode = s_userArguments.vsync ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+    VkPresentModeKHR preferredMode = s_userArguments.vsync ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
     for (uint32_t i = 0; i < devicePresentModes.count; ++i) {
         if (presentModes[i] == preferredMode) {
             selectedPresentMode = presentModes[i];
@@ -963,7 +965,17 @@ static vec2i gfx_screen_size() {
     return (vec2i){ .x = s_gfx.swapChain.width, .y = s_gfx.swapChain.height };
 }
 
+static void gfx_flush() {
+    if (g_gfx.device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(g_gfx.device);
+    }
+}
+
 static VkResult gfx_acquire_next_swap_chain_image() {
+    // FIXME: Remove gpu flush & replace with timeline semaphores (flush costs ~0.15ms w/vsync off)
+    // VUID-vkAcquireNextImageKHR-semaphore-01779
+    gfx_flush();
+
     return vkAcquireNextImageKHR(
             g_gfx.device,
             s_gfx.swapChain.swapChain,
@@ -1013,12 +1025,6 @@ static void gfx_begin_command_recording(VkCommandBuffer cmdBuffer) {
 
 static void gfx_end_command_recording(const VkCommandBuffer cmdBuffer) {
     vkEndCommandBuffer(cmdBuffer);
-}
-
-static void gfx_flush() {
-    if (g_gfx.device != VK_NULL_HANDLE) {
-        vkDeviceWaitIdle(g_gfx.device);
-    }
 }
 
 static bool gfx_window_resize() {

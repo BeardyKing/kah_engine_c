@@ -44,9 +44,6 @@ do {                                                    \
     (newStruct)->pNext = (mainStruct)->pNext;           \
     (mainStruct)->pNext = (void*)(newStruct);           \
 } while (0)
-
-//HACK: 1.4 SDK is broken for me & fails on debug callbacks.
-#define FEATURE_GFX_VK_1_4 FEATURE_OFF
 //=============================================================================
 
 //===GLOBAL_STRUCTS============================================================
@@ -125,9 +122,7 @@ static struct GfxFeatures{
     VkPhysicalDeviceVulkan11Features features11;
     VkPhysicalDeviceVulkan12Features features12;
     VkPhysicalDeviceVulkan13Features features13;
-#if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
     VkPhysicalDeviceVulkan14Features features14;
-#endif
 
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainFeatures;
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicState1Features;
@@ -158,9 +153,7 @@ static void gfx_data_structures_create(){
         .features11 =               (VkPhysicalDeviceVulkan11Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES } ,
         .features12 =               (VkPhysicalDeviceVulkan12Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES } ,
         .features13 =               (VkPhysicalDeviceVulkan13Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES } ,
-#if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
         .features14 =               (VkPhysicalDeviceVulkan14Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES } ,
-#endif // #if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
         .swapchainFeatures =        (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT } ,
         .dynamicState1Features =    (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT } ,
         .dynamicState2Features =    (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT } ,
@@ -616,11 +609,9 @@ static void gfx_physical_device_queues_create(){
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features13);
     }
-#if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,4,0)){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features14);
     }
-#endif // #if CHECK_FEATURE(FEATURE_GFX_VK_1_4)
 
     if(swapChainName){
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapChainName);

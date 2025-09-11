@@ -135,6 +135,7 @@ static struct GfxFeatures{
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT dynamicState3Features;
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
     VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timelineSemaphoreFeatures;
+    VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features;
 } s_gfxFeatures = {};
 
 //=============================================================================
@@ -148,7 +149,7 @@ static void gfx_data_structures_create(){
     s_gfxDebug = (struct GfxDebug){};
     s_userArguments = (struct GfxUserArguments){ //TODO: replace with quake style CVAR system
         .selectedPhysicalDeviceIndex = 0,
-        .vsync = true,
+        .vsync = false,
         .msaa = VK_SAMPLE_COUNT_1_BIT
     };
 
@@ -166,6 +167,7 @@ static void gfx_data_structures_create(){
         .dynamicState3Features =    (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT } ,
         .dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR },
         .timelineSemaphoreFeatures = (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR },
+        .synchronization2Features = (VkPhysicalDeviceSynchronization2FeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR },
     };
 
     s_gfx.supportedInstanceExtensions = dynamic_array_create(gfx_allocator(), sizeof(VkExtensionProperties),0);
@@ -224,7 +226,7 @@ static void gfx_vma_create(){
             .vkBindImageMemory2KHR = vkBindImageMemory2KHR,
             .vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR,
             .vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements,
-            .vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements
+            .vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements,
         },
         .instance = g_gfx.instance,
         // .vulkanApiVersion = ,
@@ -605,6 +607,7 @@ static void gfx_physical_device_queues_create(){
     const char* extDynamicState3     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME );
     const char* swapchainMaintence1  = gfx_find_supported_device_extension_name( VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME );
     const char* timelineSemaphore    = gfx_find_supported_device_extension_name( VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME );
+    const char* synchronization2    = gfx_find_supported_device_extension_name( VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME );
 
     s_gfxFeatures.deviceFeatures.pNext = &s_gfxFeatures.features11;
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,2,0)){
@@ -640,13 +643,21 @@ static void gfx_physical_device_queues_create(){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState3Features);
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState3);
     }
-    if( dynamicRenderingName && s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,3,0) ){
-        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
-        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
+    if(s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,3,0)){
+        if( dynamicRenderingName){
+            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
+            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
+        }
+        if( synchronization2){
+            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.synchronization2Features);
+            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &synchronization2);
+        }
     }
-    if(timelineSemaphore && s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,2,0) ){
-        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.timelineSemaphoreFeatures);
-        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &timelineSemaphore);
+    if(s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,2,0) ){
+        if(timelineSemaphore){
+            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.timelineSemaphoreFeatures);
+            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &timelineSemaphore);
+        }
     }
 
     vkGetPhysicalDeviceFeatures2(g_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
@@ -654,6 +665,7 @@ static void gfx_physical_device_queues_create(){
     core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
     core_assert_msg(s_gfxFeatures.features12.timelineSemaphore || s_gfxFeatures.timelineSemaphoreFeatures.timelineSemaphore, "err: Timeline semaphores is required");
     core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
+    core_assert_msg(s_gfxFeatures.features13.synchronization2 || s_gfxFeatures.synchronization2Features.synchronization2, "err: Synchronization 2 is required");
 
     s_gfxFeatures.deviceFeatures.features.robustBufferAccess = false; //Fixes VUID-VkDeviceCreateInfo-robustBufferAccess-10247 when used with descriptorIndexing.
 
@@ -972,10 +984,6 @@ static void gfx_flush() {
 }
 
 static VkResult gfx_acquire_next_swap_chain_image() {
-    // FIXME: Remove gpu flush & replace with timeline semaphores (flush costs ~0.15ms w/vsync off)
-    // VUID-vkAcquireNextImageKHR-semaphore-01779
-    gfx_flush();
-
     return vkAcquireNextImageKHR(
             g_gfx.device,
             s_gfx.swapChain.swapChain,
@@ -1063,23 +1071,27 @@ static void gfx_command_end_immediate_recording() {
 }
 
 static void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
-    //TODO: we should resolve this to KAH engine specific FP
+    //TODO: Resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdBeginRendering(cmdBuffer, renderingInfo);
     }
-    else{
-        vkCmdBeginRenderingKHR(cmdBuffer, renderingInfo);
-    }
+    vkCmdBeginRenderingKHR(cmdBuffer, renderingInfo);
 }
 
 static void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
-    //TODO: we should resolve this to KAH engine specific FP
+    //TODO: Resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdEndRendering(cmdBuffer);
     }
-    else{
-        vkCmdEndRenderingKHR(cmdBuffer);
+    vkCmdEndRenderingKHR(cmdBuffer);
+}
+
+static VkResult gfx_queue_submit_2(VkQueue queue, uint32_t submitCount, const VkSubmitInfo2* pSubmits, VkFence fence){
+    //TODO: Resolve this to KAH engine specific FP
+    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
+        return vkQueueSubmit2(queue, submitCount, pSubmits, fence);
     }
+    return vkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
 }
 
 static void gfx_command_insert_memory_barrier(
@@ -1107,19 +1119,44 @@ static void gfx_command_insert_memory_barrier(
 }
 
 static void gfx_render_frame(VkCommandBuffer cmdBuffer) {
-    constexpr VkPipelineStageFlags submitPipelineStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    const VkSubmitInfo submitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &s_gfx.semaphores[gfx_last_swap_chain_index()].presentDone,
-        .pWaitDstStageMask = &submitPipelineStages,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &cmdBuffer,
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &s_gfx.semaphores[gfx_swap_chain_index()].renderDone,
+    constexpr VkPipelineStageFlags PIPELINE_STAGE = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    constexpr uint32_t WAIT_SEMAPHORE_COUNT = 1;
+    constexpr uint32_t WAIT_SEMAPHORE_PRESENT_DONE_INDEX = 0;
+    VkSemaphoreSubmitInfo waitSemaphores[WAIT_SEMAPHORE_COUNT];
+    waitSemaphores[WAIT_SEMAPHORE_PRESENT_DONE_INDEX] = (VkSemaphoreSubmitInfo){
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = s_gfx.semaphores[gfx_last_swap_chain_index()].presentDone,
+        .stageMask = PIPELINE_STAGE,
     };
 
-    const VkResult submitRes = vkQueueSubmit(g_gfx.queue, 1, &submitInfo, s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
+    constexpr uint32_t SIGNAL_SEMAPHORE_COUNT = 1;
+    constexpr uint32_t SIGNAL_SEMAPHORE_RENDER_DONE_INDEX = 0;
+    VkSemaphoreSubmitInfo signalSemaphores[SIGNAL_SEMAPHORE_COUNT];
+    signalSemaphores[SIGNAL_SEMAPHORE_RENDER_DONE_INDEX] = (VkSemaphoreSubmitInfo){
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = s_gfx.semaphores[gfx_swap_chain_index()].renderDone,
+        .stageMask = PIPELINE_STAGE,
+    };
+
+    const VkCommandBufferSubmitInfo cmdBufferInfo = (VkCommandBufferSubmitInfo){
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = cmdBuffer,
+    };
+
+    const VkSubmitInfo2 submitInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .waitSemaphoreInfoCount   = WAIT_SEMAPHORE_COUNT,
+        .pWaitSemaphoreInfos      = waitSemaphores,
+        .commandBufferInfoCount   = 1,
+        .pCommandBufferInfos      = &cmdBufferInfo,
+        .signalSemaphoreInfoCount = SIGNAL_SEMAPHORE_COUNT,
+        .pSignalSemaphoreInfos    = signalSemaphores,
+    };
+
+    const VkFence waitFence = s_gfx.graphicsFenceWait[gfx_swap_chain_index()];
+
+    const VkResult submitRes = gfx_queue_submit_2( g_gfx.queue, 1, &submitInfo, waitFence );
     core_assert(submitRes == VK_SUCCESS);
 }
 
@@ -1142,12 +1179,14 @@ void gfx_update(){
         gfx_window_resize();
     }
 
-    s_gfx.swapChain.lastImageIndex = gfx_swap_chain_index();
-    VkResult swapchainAcquireResult = gfx_acquire_next_swap_chain_image();
-    gfx_check_window_needs_resize(swapchainAcquireResult);
-
     vkWaitForFences(g_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()], true, UINT64_MAX);
+    {
+        s_gfx.swapChain.lastImageIndex = gfx_swap_chain_index();
+        VkResult swapchainAcquireResult = gfx_acquire_next_swap_chain_image();
+        gfx_check_window_needs_resize(swapchainAcquireResult);
+    }
     vkResetFences(g_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
+
     VkCommandBuffer cmdBuffer = s_gfx.commandBuffers[gfx_buffer_index()];
     vkResetCommandBuffer(cmdBuffer, 0);
 

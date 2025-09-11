@@ -10,11 +10,17 @@
 vec2u gfx_vulkan_swapchain_size();
 //=============================================================================
 
+//===ATTACHMENTS===============================================================
+VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info();
+VkRenderingAttachmentInfoKHR get_render_target_color_attachment_info();
+VkRenderingAttachmentInfoKHR get_render_target_depth_stencil_attachment_info();
+//=============================================================================
+
 //===RENDER_TASKS==============================================================
-void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer);
-void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer);
-void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer);
-void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer);
+void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
+void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
+void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
+void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
 //=============================================================================
 
 //===UTILS=====================================================================

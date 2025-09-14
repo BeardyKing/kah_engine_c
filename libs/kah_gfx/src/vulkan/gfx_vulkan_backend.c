@@ -952,7 +952,7 @@ static vec2i gfx_screen_size() {
     return (vec2i){ .x = s_gfx.swapChain.width, .y = s_gfx.swapChain.height };
 }
 
-static void gfx_flush() {
+void gfx_flush() {
     if (g_gfx.device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(g_gfx.device);
     }

@@ -49,7 +49,7 @@ static struct GfxPool{
 
 //===API=======================================================================
 GfxImageHandle gfx_pool_get_gfx_image_handle(){
-    GfxImageHandle outHandle = truncate_cast(GfxImageHandle, pool_acquire_next_free_index(&s_pool.gfxImages));
+    GfxImageHandle outHandle = pool_acquire_next_free_index(&s_pool.gfxImages);
     core_assert(outHandle < GFX_POOL_GFX_IMAGE_COUNT_MAX);
     return outHandle;
 }

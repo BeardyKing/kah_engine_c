@@ -136,6 +136,17 @@ GfxImageHandle gfx_resource_image_colour_create(GfxAttachmentInfo* info){
 }
 
 
+uint32_t gfx_resource_create_type(GfxResourceType type, GfxAttachmentInfo* info){
+    if(type == GFX_RESOURCE_IMAGE_COLOR){
+        return gfx_resource_image_colour_create(info);
+    }
+    if (type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
+        return gfx_resource_image_depth_create(info);
+    }
+    core_not_implemented();
+    return UINT32_MAX;
+}
+
 void gfx_resource_image_release(GfxImageHandle gfxHandle){
     gfx_image_free(gfx_pool_get_gfx_image(gfxHandle));
 }

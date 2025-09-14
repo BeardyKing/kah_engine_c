@@ -6,8 +6,10 @@
 //=============================================================================
 
 //===API=======================================================================
+uint32_t gfx_resource_create_type(GfxResourceType type, GfxAttachmentInfo* info);
 GfxImageHandle gfx_resource_image_depth_create(GfxAttachmentInfo* info);
 GfxImageHandle gfx_resource_image_colour_create(GfxAttachmentInfo* info);
+
 void gfx_resource_image_release(GfxImageHandle gfxHandle);
 //=============================================================================
 

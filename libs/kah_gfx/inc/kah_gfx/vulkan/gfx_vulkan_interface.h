@@ -8,19 +8,24 @@
 
 //===API=======================================================================
 vec2u gfx_vulkan_swapchain_size();
+GfxImage gfx_get_current_swapchain_image_data();
+//=============================================================================
+
+//===COMMAND_BUFFER============================================================
+void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo);
+void gfx_command_end_rendering(VkCommandBuffer cmdBuffer);
 //=============================================================================
 
 //===ATTACHMENTS===============================================================
-VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info();
-VkRenderingAttachmentInfoKHR get_render_target_color_attachment_info();
-VkRenderingAttachmentInfoKHR get_render_target_depth_stencil_attachment_info();
+VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_spencil(VkImageView imageView);
+VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView);
 //=============================================================================
 
 //===RENDER_TASKS==============================================================
-void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
-void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
-void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
-void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo);
+void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
+void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
+void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
+void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
 //=============================================================================
 
 //===UTILS=====================================================================

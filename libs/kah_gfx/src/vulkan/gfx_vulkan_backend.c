@@ -85,11 +85,6 @@ static struct GfxBackend{
     VkFence graphicsFenceWait[KAH_SWAP_CHAIN_IMAGE_COUNT];
     GfxSemaphores semaphores[KAH_SWAP_CHAIN_IMAGE_COUNT];
 
-    struct{
-        GfxImageHandle colorHandle;
-        GfxImageHandle depthStencilHandle;
-    } renderTarget;
-
     VkPhysicalDeviceProperties deviceProperties;
     VkPhysicalDeviceFeatures deviceFeatures;
     VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
@@ -929,17 +924,6 @@ static void gfx_fences_cleanup() {
     }
 }
 
-static void gfx_render_target_create(){
-    //Colour
-    s_gfx.renderTarget.colorHandle = gfx_resource_image_colour_create(&(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE});
-    //Depth
-    s_gfx.renderTarget.depthStencilHandle = gfx_resource_image_depth_create(&(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE});
-}
-
-static void gfx_render_target_cleanup(){
-    gfx_resource_image_release(s_gfx.renderTarget.colorHandle);
-    gfx_resource_image_release(s_gfx.renderTarget.depthStencilHandle);
-}
 
 static void gfx_pipeline_cache_create(){
     VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
@@ -1029,11 +1013,11 @@ static void gfx_end_command_recording(const VkCommandBuffer cmdBuffer) {
 static bool gfx_window_resize() {
     gfx_flush();
 
-    gfx_render_target_cleanup();
+    gfx_task_graph_cleanup();
     gfx_swap_chain_cleanup();
 
     gfx_swap_chain_create();
-    gfx_render_target_create();
+    gfx_task_graph_create();
     s_gfx.windowNeedsResize = false;
     return true;
 }
@@ -1061,7 +1045,7 @@ static void gfx_command_end_immediate_recording() {
     vkQueueWaitIdle(g_gfx.queue);
 }
 
-static void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
+void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
     //TODO: Resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdBeginRendering(cmdBuffer, renderingInfo);
@@ -1069,7 +1053,7 @@ static void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRende
     vkCmdBeginRenderingKHR(cmdBuffer, renderingInfo);
 }
 
-static void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
+void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
     //TODO: Resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdEndRendering(cmdBuffer);
@@ -1196,21 +1180,20 @@ void gfx_update(){
     s_gfx.currentGfxFrame++;
 }
 
-VkRenderingAttachmentInfoKHR get_render_target_depth_stencil_attachment_info(){
+VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_spencil(VkImageView imageView){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = gfx_pool_get_gfx_image(s_gfx.renderTarget.depthStencilHandle)->view,
+        .imageView = imageView,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}},
+        .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}}, //TODO: Remove.
     };
 }
-VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info()
-{
+VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = s_gfx.swapChain.views[gfx_swap_chain_index()],
+        .imageView = imageView,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1218,22 +1201,18 @@ VkRenderingAttachmentInfoKHR get_swapchain_color_attachment_info()
     };
 }
 
-VkRenderingAttachmentInfoKHR get_render_target_color_attachment_info(){
-    return (VkRenderingAttachmentInfoKHR){
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->view,
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.color = {{0.5f, 0.092f, 0.167f, 1.0f}},},
-    };
-}
 
-void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo){
+void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx){
+    //===WRITE=================================================================
+    core_assert(ctx.writeCount == 2);
+    core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_COLOR);
+    core_assert(ctx.write[0].data.imageColor.binding == 0);
+    const GfxImage* writeImage0 = gfx_pool_get_gfx_image(ctx.write[0].data.imageColor.handle);
+    //=========================================================================
 
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
+            &writeImage0->image,
             0,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1246,20 +1225,27 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR re
         gfx_command_begin_rendering(cmdBuffer, &renderingInfo);
         {
             const VkExtent2D renderArea = renderingInfo.renderArea.extent;
-            const VkViewport viewport = {0, 0, (float)renderArea.width, (float)renderArea.height, 0.0f, 1.0f};
+            const VkViewport viewport = {0, 0, (float)writeImage0->size.x, (float)writeImage0->size.y, 0.0f, 1.0f};
             vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
-            const VkRect2D scissor = {0, 0, renderArea.width, renderArea.height};
+            const VkRect2D scissor = {0, 0, writeImage0->size.x, writeImage0->size.y};
             vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
         }
         gfx_command_end_rendering(cmdBuffer);
     }
 }
 
-void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo){
+void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo,GfxRenderContext ctx){
+    //===WRITE=================================================================
+    core_assert(ctx.writeCount == 2);
+    core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_COLOR);
+    core_assert(ctx.write[0].data.imageColor.binding == 0);
+    const GfxImage* writeImage0 = gfx_pool_get_gfx_image(ctx.write[0].data.imageColor.handle);
+    //=========================================================================
+
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
+            &writeImage0->image,
             0,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1278,11 +1264,33 @@ void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderin
 #endif // CHECK_FEATURE(FEATURE_GFX_IMGUI)
 }
 
+GfxImage gfx_get_current_swapchain_image_data(){
+    const uint32_t currentIndex = gfx_swap_chain_index();
+    return (GfxImage){
+        .image = s_gfx.swapChain.images[currentIndex],
+        .view = s_gfx.swapChain.views[currentIndex],
+        .alloc = VK_NULL_HANDLE,
+        .size = {.x = s_gfx.swapChain.width, .y = s_gfx.swapChain.height}
+    };
+}
 
-void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo) {
+void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx) {
+    //===READ==================================================================
+    core_assert(ctx.readCount == 1);
+    core_assert(ctx.read[0].type == GFX_RESOURCE_IMAGE_COLOR);
+    core_assert(ctx.read[0].data.imageColor.binding == 0);
+    const GfxImage* readImage0 = gfx_pool_get_gfx_image(ctx.read[0].data.imageColor.handle);
+    //=========================================================================
+    //===WRITE=================================================================
+    core_assert(ctx.writeCount == 1);
+    core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_EXTERNAL_CB);
+    core_assert(ctx.write[0].data.imageColor.binding == 0);
+    const GfxImage writeImage0 = ctx.write[0].data.external.imageCB();
+    //=========================================================================
+
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &s_gfx.swapChain.images[gfx_swap_chain_index()],
+            &writeImage0.image,
             0,
             VK_ACCESS_TRANSFER_WRITE_BIT,
             VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1294,7 +1302,7 @@ void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderi
 
     gfx_command_insert_memory_barrier(
             cmdBuffer,
-            &gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
+            &readImage0->image,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_ACCESS_TRANSFER_READ_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1309,45 +1317,40 @@ void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderi
             .srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
             .srcOffsets = {
                     {.x = 0, .y = 0, .z = 0},
-                    {.x = (int32_t)(renderArea.width), .y = (int32_t)(renderArea.height), .z = 1}
+                    {.x = (int32_t)(readImage0->size.x), .y = (int32_t)(readImage0->size.y), .z = 1}
             },
             .dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
             .dstOffsets = {
                     {.x = 0, .y = 0, .z = 0},
-                    {.x = (int32_t)(renderArea.width), .y = (int32_t)( renderArea.height), .z = 1}
+                    {.x = (int32_t)(writeImage0.size.x), .y = (int32_t)( writeImage0.size.y), .z = 1}
             },
     };
 
     vkCmdBlitImage(
             cmdBuffer,
-            gfx_pool_get_gfx_image(s_gfx.renderTarget.colorHandle)->image,
+            readImage0->image,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            s_gfx.swapChain.images[gfx_swap_chain_index()],
+            writeImage0.image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1, &blitRegion,
             VK_FILTER_LINEAR
     );
-
-    gfx_command_insert_memory_barrier(
-            cmdBuffer,
-            &s_gfx.swapChain.images[gfx_swap_chain_index()],
-            0,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
-        );
 }
 
-void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo){
+void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx){
+    //===WRITE=================================================================
+    core_assert(ctx.readCount == 1);
+    core_assert(ctx.read[0].type == GFX_RESOURCE_IMAGE_EXTERNAL_CB);
+    core_assert(ctx.read[0].data.imageColor.binding == 0);
+    const GfxImage readImage0 = ctx.read[0].data.external.imageCB();
+    //=========================================================================
+
     gfx_command_insert_memory_barrier(
         cmdBuffer,
-        &s_gfx.swapChain.images[gfx_swap_chain_index()],
+        &readImage0.image,
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         0,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
@@ -1419,7 +1422,6 @@ VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
 void gfx_create(void* windowHandle){
     gfx_pool_create();
     gfx_data_structures_create();
-    gfx_task_graph_create();
     gfx_volk_create();
     gfx_instance_create();
     gfx_debug_callbacks_create();
@@ -1432,7 +1434,7 @@ void gfx_create(void* windowHandle){
     gfx_swap_chain_create();
     gfx_command_buffers_create();
     gfx_fences_create();
-    gfx_render_target_create();
+    gfx_task_graph_create();
     gfx_pipeline_cache_create();
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
@@ -1447,7 +1449,7 @@ void gfx_cleanup(){
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
     gfx_pipeline_cache_cleanup();
-    gfx_render_target_cleanup();
+    gfx_task_graph_cleanup();
     gfx_fences_cleanup();
     gfx_command_buffers_cleanup();
     gfx_swap_chain_cleanup();
@@ -1459,7 +1461,6 @@ void gfx_cleanup(){
     gfx_debug_callbacks_cleanup();
     gfx_instance_cleanup();
     gfx_volk_cleanup();
-    gfx_task_graph_cleanup();
     gfx_data_structures_cleanup();
     gfx_pool_cleanup();
 }

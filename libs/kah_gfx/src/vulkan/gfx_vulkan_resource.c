@@ -108,6 +108,7 @@ GfxImageHandle gfx_resource_image_colour_create(GfxAttachmentInfo* info){
     GfxImageHandle outHandle = gfx_pool_get_gfx_image_handle();
     core_assert(outHandle != GFX_NULL_HANDLE);
     GfxImage* currentImage = gfx_pool_get_gfx_image(outHandle);
+    currentImage->size = targetSize;
 
     const VkResult createImgRes = vmaCreateImage(g_gfx.allocator, &colourImageInfo, &allocInfo, &currentImage->image, &currentImage->alloc, nullptr);
     core_assert(createImgRes == VK_SUCCESS);

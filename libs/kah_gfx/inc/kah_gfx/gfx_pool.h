@@ -12,7 +12,6 @@
 
 //===API=======================================================================
 #define GFX_POOL_GFX_IMAGE_COUNT_MAX UINT16_MAX
-typedef uint32_t GfxImageHandle;
 GfxImageHandle  gfx_pool_get_gfx_image_handle();
 GfxImage*       gfx_pool_get_gfx_image(GfxImageHandle);
 void            gfx_pool_release_gfx_image(GfxImageHandle);

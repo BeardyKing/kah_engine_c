@@ -258,8 +258,10 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
 
 //===API=======================================================================
 void gfx_task_graph_run(VkCommandBuffer cmdBuffer){
+    gfx_log_verbose("tg begin:\n");
     for (uint32_t renderPassIndex = 0; renderPassIndex < s_tg.renderPassCount; ++renderPassIndex){
         const GfxRenderPass* rp = &s_tg.renderPasses[renderPassIndex];
+        gfx_log_verbose("rp begin: %s\n",rp->name);
         core_assert(rp->infoCtx.readCount <= GFX_RENDER_CONTEXT_READ_WRITE_MAX);
         core_assert(rp->infoCtx.writeCount <= GFX_RENDER_CONTEXT_READ_WRITE_MAX);
 
@@ -276,6 +278,7 @@ void gfx_task_graph_run(VkCommandBuffer cmdBuffer){
             break;
         }
     }
+    gfx_log_verbose("tg end:\n");
 
     s_tg = (GfxTaskGraph){};
     s_tgStringArena.count = 0;

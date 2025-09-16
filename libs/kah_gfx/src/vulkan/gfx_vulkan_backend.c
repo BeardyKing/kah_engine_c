@@ -8,7 +8,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_surface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
-#include <kah_gfx/vulkan/gfx_vulkan_resource.h>
+#include <kah_gfx/vulkan/gfx_vulkan_utils.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -1090,6 +1090,9 @@ static void gfx_command_insert_memory_barrier(
             .image = *image,
             .subresourceRange = subresourceRange,
     };
+
+    gfx_log_verbose("barrier before: \noldLayout = \t%s \nsrcAccessMask = %s \nsrcStageMask = \t%s\n", VkImageLayout_c_str(oldImageLayout), VkAccessFlagBits_c_str(srcAccessMask) , VkPipelineStageFlags_c_str(srcStageMask));
+    gfx_log_verbose("barrier after : \nnewLayout = \t%s \ndstAccessMask = %s \ndstStageMask = \t%s\n\n", VkImageLayout_c_str(newImageLayout), VkAccessFlagBits_c_str(dstAccessMask) , VkPipelineStageFlags_c_str(dstStageMask));
     vkCmdPipelineBarrier(cmdBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 }
 

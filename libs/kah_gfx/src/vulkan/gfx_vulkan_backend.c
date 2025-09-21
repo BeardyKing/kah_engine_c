@@ -1182,27 +1182,6 @@ void gfx_update(){
     s_gfx.currentGfxFrame++;
 }
 
-VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_spencil(VkImageView imageView){
-    return (VkRenderingAttachmentInfoKHR){
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = imageView,
-        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}}, //TODO: Remove.
-    };
-}
-VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView){
-    return (VkRenderingAttachmentInfoKHR){
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .imageView = imageView,
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.color = {{0.5f, 0.092f, 0.167f, 1.0f}},},
-    };
-}
-
 
 void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
     //===WRITE=================================================================

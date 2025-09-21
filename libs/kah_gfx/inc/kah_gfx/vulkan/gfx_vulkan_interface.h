@@ -22,11 +22,6 @@ void gfx_command_end_rendering(VkCommandBuffer cmdBuffer);
 void gfx_command_insert_memory_barrier( VkCommandBuffer cmdBuffer, const VkImage *image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkImageSubresourceRange subresourceRange);
 //=============================================================================
 
-//===ATTACHMENTS===============================================================
-VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_spencil(VkImageView imageView);
-VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView);
-//=============================================================================
-
 //===RENDER_TASKS==============================================================
 void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
 void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);

@@ -10,8 +10,6 @@
 #include <kah_core/utils.h>
 
 #include <stdio.h>
-
-#include "kah_gfx/vulkan/gfx_vulkan_utils.h"
 //=============================================================================
 
 //===LOCAL_STRUCTS=============================================================
@@ -133,6 +131,28 @@ static GfxRenderPass* render_pass_create(const char* renderPassName){
     GfxRenderPass* outRP = &s_tg.renderPasses[s_tg.renderPassCount++];
     outRP->name = task_graph_arena_string(&s_tgRenderPassArena, renderPassName);
     return outRP;
+}
+
+static VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_stencil(VkImageView imageView){
+    return (VkRenderingAttachmentInfoKHR){
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView = imageView,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}}, //TODO: Remove.
+    };
+}
+
+static VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView){
+    return (VkRenderingAttachmentInfoKHR){
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+        .imageView = imageView,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.color = {{0.5f, 0.092f, 0.167f, 1.0f}},},
+    };
 }
 
 GfxResourceInfoHandle gfx_task_graph_resource_create(GfxResourceType type, GfxAttachmentInfo* attachmentInfo, const char* resourceName, GfxImageExternal_cb cb){
@@ -301,7 +321,7 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
         }
         if(type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
             core_assert(depthStencilAttachmentInUse == false);
-            depthStencilAttachment = gfx_rendering_attachment_info_depth_spencil(gfx_pool_get_gfx_image(renderCtx.write[writeIndex].data.imageDepthStencil.handle)->view);
+            depthStencilAttachment = gfx_rendering_attachment_info_depth_stencil(gfx_pool_get_gfx_image(renderCtx.write[writeIndex].data.imageDepthStencil.handle)->view);
             depthStencilAttachmentInUse = true;
         }
         if(type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){

@@ -572,7 +572,7 @@ static void gfx_physical_device_queues_create(){
     gfx_log_verbose("Graphics queue index: %u \n", graphicsQueueInfo.queueIndex);
     core_assert_msg(graphicsQueueInfo.queueIndex != UINT32_MAX, "err: did not find valid graphics queue");
 
-    const float graphicsQueuePriority = 1.0f;
+    constexpr float graphicsQueuePriority = 1.0f;
     VkDeviceQueueCreateInfo graphicsQueueCreateInfo = (VkDeviceQueueCreateInfo){
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         .pNext = nullptr,
@@ -813,7 +813,7 @@ static void gfx_swap_chain_create(){
         .imageUsage = swapchainImageUsage,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices = 0,
+        .pQueueFamilyIndices = nullptr,
         .preTransform = surfaceTransform,
         .compositeAlpha = compositeAlphaFormat,
         .presentMode = swapChainPresentMode,
@@ -835,9 +835,6 @@ static void gfx_swap_chain_create(){
     vkGetSwapchainImagesKHR(g_gfx.device, s_gfx.swapChain.swapChain, &s_gfx.swapChain.imageCount, nullptr);
     VkResult swapChainImageResult = vkGetSwapchainImagesKHR(g_gfx.device,  s_gfx.swapChain.swapChain, &s_gfx.swapChain.imageCount, &s_gfx.swapChain.images[0] );
     core_assert_msg(swapChainImageResult == VK_SUCCESS, "err: failed to re-create swap chain images");
-
-    VkComponentMapping         components;
-    VkImageSubresourceRange    subresourceRange;
 
     for (uint32_t i = 0; i < s_gfx.swapChain.imageCount; i++) {
         VkImageViewCreateInfo swapChainImageViewInfo = (VkImageViewCreateInfo){
@@ -943,10 +940,6 @@ uint32_t gfx_last_swap_chain_index() {
 
 uint32_t gfx_buffer_index() {
     return (s_gfx.currentGfxFrame % KAH_BUFFER_COUNT);
-}
-
-static vec2i gfx_screen_size() {
-    return (vec2i){ .x = s_gfx.swapChain.width, .y = s_gfx.swapChain.height };
 }
 
 void gfx_flush() {

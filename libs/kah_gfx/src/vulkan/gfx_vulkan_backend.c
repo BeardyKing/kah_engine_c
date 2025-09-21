@@ -23,9 +23,6 @@
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
-constexpr uint32_t KAH_SWAP_CHAIN_IMAGE_COUNT = 3;
-constexpr uint32_t KAH_BUFFER_COUNT = 3;
-
 constexpr char KAH_VK_VALIDATION_LAYER_NAME[] = "VK_LAYER_KHRONOS_validation";
 
 constexpr VkDebugUtilsMessageSeverityFlagsEXT KAH_VK_DEBUG_UTILS_MESSAGE_SEVERITY =
@@ -936,11 +933,11 @@ static void gfx_pipeline_cache_cleanup(){
     vkDestroyPipelineCache(g_gfx.device, s_gfx.pipelineCache, g_gfx.allocationCallbacks);
 }
 
-static uint32_t gfx_swap_chain_index() {
+uint32_t gfx_swap_chain_index() {
     return (s_gfx.swapChain.currentImageIndex);
 }
 
-static uint32_t gfx_last_swap_chain_index() {
+uint32_t gfx_last_swap_chain_index() {
     return (s_gfx.swapChain.lastImageIndex);
 }
 
@@ -1069,7 +1066,7 @@ static VkResult gfx_queue_submit_2(VkQueue queue, uint32_t submitCount, const Vk
     return vkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
 }
 
-static void gfx_command_insert_memory_barrier(
+void gfx_command_insert_memory_barrier(
         VkCommandBuffer cmdBuffer,
         const VkImage *image,
         const VkAccessFlags srcAccessMask,
@@ -1090,6 +1087,8 @@ static void gfx_command_insert_memory_barrier(
             .image = *image,
             .subresourceRange = subresourceRange,
     };
+
+    core_assert(newImageLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 
     gfx_log_verbose("barrier before: \noldLayout = \t%s \nsrcAccessMask = %s \nsrcStageMask = \t%s\n", VkImageLayout_c_str(oldImageLayout), VkAccessFlagBits_c_str(srcAccessMask) , VkPipelineStageFlags_c_str(srcStageMask));
     gfx_log_verbose("barrier after : \nnewLayout = \t%s \ndstAccessMask = %s \ndstStageMask = \t%s\n\n", VkImageLayout_c_str(newImageLayout), VkAccessFlagBits_c_str(dstAccessMask) , VkPipelineStageFlags_c_str(dstStageMask));
@@ -1168,7 +1167,7 @@ void gfx_update(){
     gfx_task_graph_build();
 
     VkCommandBuffer cmdBuffer = s_gfx.commandBuffers[gfx_buffer_index()];
-    vkResetCommandBuffer(cmdBuffer, 0);
+    vkResetCommandBuffer(cmdBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 
     gfx_begin_command_recording(cmdBuffer);
     {
@@ -1205,65 +1204,28 @@ VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView ima
 }
 
 
-void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx){
+void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
     //===WRITE=================================================================
     core_assert(ctx.writeCount == 2);
     core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_COLOR);
     core_assert(ctx.write[0].data.imageColor.binding == 0);
     const GfxImage* writeImage0 = gfx_pool_get_gfx_image(ctx.write[0].data.imageColor.handle);
     //=========================================================================
+    const VkViewport viewport = {0, 0, (float)writeImage0->size.x, (float)writeImage0->size.y, 0.0f, 1.0f};
+    vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
-    gfx_command_insert_memory_barrier(
-            cmdBuffer,
-            &writeImage0->image,
-            0,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
-    );
-    {
-        gfx_command_begin_rendering(cmdBuffer, &renderingInfo);
-        {
-            const VkExtent2D renderArea = renderingInfo.renderArea.extent;
-            const VkViewport viewport = {0, 0, (float)writeImage0->size.x, (float)writeImage0->size.y, 0.0f, 1.0f};
-            vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
-
-            const VkRect2D scissor = {0, 0, writeImage0->size.x, writeImage0->size.y};
-            vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
-        }
-        gfx_command_end_rendering(cmdBuffer);
-    }
+    const VkRect2D scissor = {0, 0, writeImage0->size.x, writeImage0->size.y};
+    vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 }
 
-void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo,GfxRenderContext ctx){
+void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
     //===WRITE=================================================================
     core_assert(ctx.writeCount == 2);
     core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_COLOR);
     core_assert(ctx.write[0].data.imageColor.binding == 0);
-    const GfxImage* writeImage0 = gfx_pool_get_gfx_image(ctx.write[0].data.imageColor.handle);
     //=========================================================================
-
-    gfx_command_insert_memory_barrier(
-            cmdBuffer,
-            &writeImage0->image,
-            0,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,}
-        );
-
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
-    gfx_command_begin_rendering(cmdBuffer, &renderingInfo);
-    {
-        gfx_imgui_draw(cmdBuffer);
-    }
-    gfx_command_end_rendering(cmdBuffer);
+    gfx_imgui_draw(cmdBuffer);
 #endif // CHECK_FEATURE(FEATURE_GFX_IMGUI)
 }
 
@@ -1277,7 +1239,7 @@ GfxImage gfx_get_current_swapchain_image_data(){
     };
 }
 
-void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx) {
+void gfx_vulkan_blit_image_to_swapchain_run( VkCommandBuffer cmdBuffer, GfxRenderContext ctx ) {
     //===READ==================================================================
     core_assert(ctx.readCount == 1);
     core_assert(ctx.read[0].type == GFX_RESOURCE_IMAGE_COLOR);
@@ -1290,32 +1252,6 @@ void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderi
     core_assert(ctx.write[0].data.imageColor.binding == 0);
     const GfxImage writeImage0 = ctx.write[0].data.external.imageCB();
     //=========================================================================
-
-    gfx_command_insert_memory_barrier(
-            cmdBuffer,
-            &writeImage0.image,
-            0,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
-    );
-
-    gfx_command_insert_memory_barrier(
-            cmdBuffer,
-            &readImage0->image,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
-    );
-
-    VkExtent2D renderArea = renderingInfo.renderArea.extent;
     const VkImageBlit blitRegion = {
             .srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1},
             .srcOffsets = {
@@ -1340,25 +1276,12 @@ void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderi
     );
 }
 
-void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx){
+void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
     //===WRITE=================================================================
     core_assert(ctx.readCount == 1);
     core_assert(ctx.read[0].type == GFX_RESOURCE_IMAGE_EXTERNAL_CB);
     core_assert(ctx.read[0].data.imageColor.binding == 0);
-    const GfxImage readImage0 = ctx.read[0].data.external.imageCB();
     //=========================================================================
-
-    gfx_command_insert_memory_barrier(
-        cmdBuffer,
-        &readImage0.image,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        0,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-        (VkImageSubresourceRange){VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
-    );
 }
 //===API/GFX_VULKAN_INTERFACE==================================================
 vec2u gfx_vulkan_swapchain_size(){

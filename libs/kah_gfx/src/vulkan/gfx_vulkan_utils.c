@@ -41,7 +41,7 @@ const char* VkImageLayout_c_str( const VkImageLayout imageLayout ){
         case VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT:          return "VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT";
         case VK_IMAGE_LAYOUT_VIDEO_ENCODE_QUANTIZATION_MAP_KHR:             return "VK_IMAGE_LAYOUT_VIDEO_ENCODE_QUANTIZATION_MAP_KHR";
         case VK_IMAGE_LAYOUT_MAX_ENUM:                                      return "VK_IMAGE_LAYOUT_MAX_ENUM";
-        default:;
+    default:;
         //DUPLICATE case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR:
         //DUPLICATE case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR:
         //DUPLICATE case VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:
@@ -89,6 +89,9 @@ const char* VkAccessFlagBits_c_str( const VkAccessFlagBits accessFlagBits ){
         case VK_ACCESS_COMMAND_PREPROCESS_READ_BIT_NV:                  return "VK_ACCESS_COMMAND_PREPROCESS_READ_BIT_NV";
         case VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_NV:                 return "VK_ACCESS_COMMAND_PREPROCESS_WRITE_BIT_NV";
         case VK_ACCESS_FLAG_BITS_MAX_ENUM:                              return "VK_ACCESS_FLAG_BITS_MAX_ENUM";
+        //===COMMON COMBINATIONS===============================================
+        case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT: return "VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT";
+        //=====================================================================
         default:;
         //DUPLICATE case VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV:
         //DUPLICATE case VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV:

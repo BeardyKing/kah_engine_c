@@ -10,6 +10,8 @@
 #include <kah_core/utils.h>
 
 #include <stdio.h>
+
+#include "kah_gfx/vulkan/gfx_vulkan_utils.h"
 //=============================================================================
 
 //===LOCAL_STRUCTS=============================================================
@@ -22,14 +24,15 @@ constexpr char TG_ARENA_STRING_FALLBACK[TG_RENDER_PASS_NAME_MAX] = "err: no tg s
 struct GfxTaskGraph typedef GfxTaskGraph;
 struct GfxRenderPass typedef GfxRenderPass;
 
-typedef void (*GfxRenderPassRun_cb)(VkCommandBuffer cmd, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
+typedef void (*GfxRenderPassRun_cb)(VkCommandBuffer cmd, GfxRenderContext ctx);
 typedef uint32_t GfxResourceInfoHandle;
 
 enum GfxRenderGraphQueueType {
     GFX_RENDER_GRAPH_QUEUE_NONE = 0,
     GFX_RENDER_GRAPH_QUEUE_GRAPHICS = 1 << 0,
     GFX_RENDER_GRAPH_QUEUE_BLIT = 1 << 1,
-    // GFX_RENDER_GRAPH_QUEUE_COMPUTE = 1 << 2,
+    GFX_RENDER_GRAPH_QUEUE_COMPUTE = 1 << 2,
+    GFX_RENDER_GRAPH_QUEUE_PRESENT = 1 << 3,
 }typedef GfxRenderGraphQueueType;
 
 enum GfxAttachmentSizeType{
@@ -46,19 +49,23 @@ struct GfxResourceInfo{
 
     VkImageLayout lastLayout;
     VkAccessFlagBits lastAccess;
+    VkPipelineStageFlagBits lastStage;
 } typedef GfxResourceInfo;
 
+struct PassCtx{
+    uint32_t binding;
+    GfxResourceInfoHandle handle;
+
+    VkAccessFlagBits acess;
+    VkImageLayout layout;
+    VkPipelineStageFlagBits stage;
+}typedef PassCtx;
+
 struct GfxRenderInfoContext{
-    struct ReadCtx{
-        uint32_t binding;
-        GfxResourceInfoHandle handle;
-    }read[GFX_RENDER_CONTEXT_READ_WRITE_MAX];
+    PassCtx read[GFX_RENDER_CONTEXT_READ_WRITE_MAX];
     uint32_t readCount;
 
-    struct WriteCtx{
-        uint32_t binding;
-        GfxResourceInfoHandle handle;
-    }write[GFX_RENDER_CONTEXT_READ_WRITE_MAX];
+    PassCtx write[GFX_RENDER_CONTEXT_READ_WRITE_MAX];
     uint32_t writeCount;
 }typedef GfxRenderInfoContext;
 
@@ -85,13 +92,17 @@ static GfxTaskGraph s_tg = {};
 static struct TaskGraphResourceInfoHandles{
     GfxResourceInfoHandle color;
     GfxResourceInfoHandle depthStencil;
-    GfxResourceInfoHandle external_swapchainImage;
+    GfxResourceInfoHandle external_swapchainImage[KAH_SWAP_CHAIN_IMAGE_COUNT];
 } s_resources;
 
-static struct TaskGraphStringArena{
+struct TaskGraphArena{
     AllocInfo* alloc;
     size_t count;
-} s_tgStringArena = {};
+} typedef TaskGraphArena;
+
+static TaskGraphArena s_tgRenderPassArena = {};
+static TaskGraphArena s_tgResourceArena = {};
+static bool s_tgArenasAllocated = false;
 
 constexpr uint32_t TG_RESOURCE_POOL_MAX = 32;
 static struct GfxTaskGraphPools{
@@ -104,13 +115,13 @@ static struct GfxTaskGraphPools{
 //=============================================================================
 
 //===LOCAL_FUNCTIONS===========================================================
-static const char* task_graph_arena_string(const char* inStr){
-    core_assert(s_tgStringArena.alloc);
+static const char* task_graph_arena_string(TaskGraphArena* inArena, const char* inStr){
+    core_assert(inArena->alloc);
     const size_t inStrLen = strlen(inStr) + 1;
-    if((s_tgStringArena.count + inStrLen) < s_tgStringArena.alloc->commitedMemory){
+    if((inArena->count + inStrLen) < inArena->alloc->commitedMemory){
         core_assert(inStrLen < TG_RENDER_PASS_NAME_MAX);
-        char* outStr = &((char*)s_tgStringArena.alloc->bufferAddress)[s_tgStringArena.count];
-        s_tgStringArena.count += inStrLen;
+        char* outStr = &((char*)inArena->alloc->bufferAddress)[s_tgRenderPassArena.count];
+        inArena->count += inStrLen;
         sprintf(outStr, "%s\0", inStr);
         return outStr;
     }
@@ -120,7 +131,7 @@ static const char* task_graph_arena_string(const char* inStr){
 static GfxRenderPass* render_pass_create(const char* renderPassName){
     core_assert(s_tg.renderPassCount + 1 < TG_RENDER_PASS_MAX);
     GfxRenderPass* outRP = &s_tg.renderPasses[s_tg.renderPassCount++];
-    outRP->name = task_graph_arena_string(renderPassName);
+    outRP->name = task_graph_arena_string(&s_tgRenderPassArena, renderPassName);
     return outRP;
 }
 
@@ -129,12 +140,13 @@ GfxResourceInfoHandle gfx_task_graph_resource_create(GfxResourceType type, GfxAt
     core_assert(s_tgPools.gfxResourceInfosCount + 1 < TG_RESOURCE_POOL_MAX);
     const uint32_t outResourcePoolIndex = s_tgPools.gfxResourcesCount;
     const uint32_t outResourceInfoIndex = s_tgPools.gfxResourceInfosCount;
+    core_assert_msg(outResourcePoolIndex == outResourceInfoIndex, "resource & pool must be 1:1 for fast info lookup");
     {
         GfxResource* resource = &s_tgPools.gfxResources[s_tgPools.gfxResourcesCount++];
 
         if(type == GFX_RESOURCE_IMAGE_COLOR){
             const uint32_t resourceDataHandle = gfx_resource_create_type(type, attachmentInfo);
-            *resource = (GfxResource){.type = type, .data.imageColor = {.binding = GFX_RESOURCE_BINDING_NONE, .handle = resourceDataHandle}};
+            *resource = (GfxResource){.type = type, .data.imageColor = {.binding = TG_INVALID, .handle = resourceDataHandle}};
         }
         if(type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
             const uint32_t resourceDataHandle = gfx_resource_create_type(type, attachmentInfo);
@@ -142,21 +154,67 @@ GfxResourceInfoHandle gfx_task_graph_resource_create(GfxResourceType type, GfxAt
         }
         if(type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
             core_assert(cb != nullptr);
-            *resource = (GfxResource){.type = type, .data.external = {.binding = GFX_RESOURCE_BINDING_NONE, .imageCB = cb}};
+            *resource = (GfxResource){.type = type, .data.external = {.binding = TG_INVALID, .imageCB = cb}};
         }
     }
     {
+        const char* resName = task_graph_arena_string(&s_tgResourceArena, resourceName);
         s_tgPools.gfxResourceInfos[s_tgPools.gfxResourceInfosCount++] = (GfxResourceInfo){
-            .name = task_graph_arena_string(resourceName),
+            .name = resName,
             .resourceHandle = outResourcePoolIndex,
             .attachmentInfo = attachmentInfo != nullptr ? *attachmentInfo : (GfxAttachmentInfo){},
-            .lastLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .lastAccess = 0 // not a valid enum entry.
+            .lastLayout = 0,
+            .lastAccess = 0, // not a valid enum entry.
+            .lastStage = 0,
         };
     }
     return outResourceInfoIndex;
 }
 
+static void gfx_task_graph_build_and_run_barriers(VkCommandBuffer cmdBuffer, const PassCtx* passCtxArray, const uint32_t passCount){
+    for (uint32_t readIndex = 0; readIndex < passCount; ++readIndex){
+        const PassCtx* ctx = &passCtxArray[readIndex];
+        const GfxResource* resource = &s_tgPools.gfxResources[ctx->handle];
+
+        if( resource->type == GFX_RESOURCE_IMAGE_COLOR ||
+            resource->type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL ||
+            resource->type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
+            GfxResourceInfo* info = &s_tgPools.gfxResourceInfos[ctx->handle];
+            VkImageAspectFlags imageAspectFlags = {};
+
+            GfxImage gfxImage = {};
+            if(resource->type == GFX_RESOURCE_IMAGE_COLOR){
+                gfxImage = *gfx_pool_get_gfx_image(resource->data.imageColor.handle);
+                imageAspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            if(resource->type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
+                gfxImage = *gfx_pool_get_gfx_image(resource->data.imageDepthStencil.handle);
+                imageAspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+            if(resource->type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
+                gfxImage = resource->data.external.imageCB();
+                imageAspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            core_assert(gfxImage.image != VK_NULL_HANDLE);
+
+            gfx_command_insert_memory_barrier(
+                cmdBuffer,
+                &gfxImage.image,
+                info->lastAccess,
+                ctx->acess,
+                info->lastLayout,
+                ctx->layout,
+                info->lastStage,
+                ctx->stage,
+                (VkImageSubresourceRange){imageAspectFlags, 0, 1, 0, 1}
+            );
+
+            info->lastAccess = ctx->acess;
+            info->lastLayout = ctx->layout;
+            info->lastStage = ctx->stage;
+        }
+    }
+}
 
 static void build_render_context_from_info_context(GfxRenderContext* ctx, const GfxRenderInfoContext* info){
     core_assert(ctx != nullptr);
@@ -173,7 +231,7 @@ static void build_render_context_from_info_context(GfxRenderContext* ctx, const 
             ctx->read[readIndex].data.imageColor.binding = bindingIndex;
         }
         if(ctx->read[readIndex].type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
-            core_assert(bindingIndex == GFX_RESOURCE_BINDING_NONE);
+            core_assert(bindingIndex == TG_INVALID);
         }
         if(ctx->read[readIndex].type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
             ctx->read[readIndex].data.external.binding = bindingIndex;
@@ -188,7 +246,7 @@ static void build_render_context_from_info_context(GfxRenderContext* ctx, const 
             ctx->write[writeIndex].data.imageColor.binding = bindingIndex;
         }
         if(ctx->write[writeIndex].type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
-            core_assert(bindingIndex == GFX_RESOURCE_BINDING_NONE);
+            core_assert(bindingIndex == TG_INVALID);
         }
         if(ctx->write[writeIndex].type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
             ctx->write[writeIndex].data.external.binding = bindingIndex;
@@ -196,10 +254,23 @@ static void build_render_context_from_info_context(GfxRenderContext* ctx, const 
     }
 }
 
-static void gfx_task_graph_run_blit(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
+static void gfx_task_graph_run_present(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
+    core_assert(rp->infoCtx.readCount == 1 && rp->infoCtx.writeCount == 0);
+    gfx_log_verbose("render pass present: %s\n", rp->name);
     GfxRenderContext renderCtx = {};
     build_render_context_from_info_context(&renderCtx, &rp->infoCtx);
-    rp->dispatch(cmdBuffer, (VkRenderingInfoKHR){}, renderCtx);
+
+    rp->dispatch(cmdBuffer, renderCtx);
+}
+
+static void gfx_task_graph_run_blit(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
+    core_assert(rp->infoCtx.readCount == 1 && rp->infoCtx.writeCount == 1);
+    gfx_log_verbose("render pass blit: %s\n", rp->name);
+
+    GfxRenderContext renderCtx = {};
+    build_render_context_from_info_context(&renderCtx, &rp->infoCtx);
+
+    rp->dispatch(cmdBuffer, renderCtx);
 }
 
 static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
@@ -235,7 +306,7 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
         }
         if(type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
             // Note: we probably want (some) external resources to be included in the color attachment count,
-            // but we don't sore that info currently.
+            // but we don't sore that info currently. (i.e. not all external resources are colour)
         }
     }
 
@@ -249,10 +320,11 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
         .pStencilAttachment = depthStencilAttachmentInUse ? &depthStencilAttachment : nullptr,
     };
 
-    //TODO: batch barriers here:
-    //TODO: gfx_command_begin_rendering here:
-    rp->dispatch(cmdBuffer, renderingInfo, renderCtx);
-    //TODO: gfx_command_end_rendering here:
+    gfx_command_begin_rendering(cmdBuffer, &renderingInfo);
+    {
+        rp->dispatch(cmdBuffer, renderCtx);
+    }
+    gfx_command_end_rendering(cmdBuffer);
 }
 //=============================================================================
 
@@ -265,12 +337,19 @@ void gfx_task_graph_run(VkCommandBuffer cmdBuffer){
         core_assert(rp->infoCtx.readCount <= GFX_RENDER_CONTEXT_READ_WRITE_MAX);
         core_assert(rp->infoCtx.writeCount <= GFX_RENDER_CONTEXT_READ_WRITE_MAX);
 
+        //TODO: gfx_task_graph_build_and_run_barriers should batch barriers & skip when last == current resource state.
+        gfx_task_graph_build_and_run_barriers(cmdBuffer,rp->infoCtx.read, rp->infoCtx.readCount);
+        gfx_task_graph_build_and_run_barriers(cmdBuffer, rp->infoCtx.write, rp->infoCtx.writeCount);
+
         switch (rp->queue){
         case GFX_RENDER_GRAPH_QUEUE_GRAPHICS:
             gfx_task_graph_run_graphics(cmdBuffer, rp);
             break;
         case GFX_RENDER_GRAPH_QUEUE_BLIT:
             gfx_task_graph_run_blit(cmdBuffer, rp);
+            break;
+        case GFX_RENDER_GRAPH_QUEUE_PRESENT:
+            gfx_task_graph_run_present(cmdBuffer, rp);
             break;
         case GFX_RENDER_GRAPH_QUEUE_NONE:
         default:
@@ -279,44 +358,86 @@ void gfx_task_graph_run(VkCommandBuffer cmdBuffer){
         }
     }
     gfx_log_verbose("tg end:\n");
-
-    s_tg = (GfxTaskGraph){};
-    s_tgStringArena.count = 0;
 }
 
 void gfx_task_graph_build(){
+    s_tg = (GfxTaskGraph){};
+    s_tgRenderPassArena.count = 0;
+
     const GfxImageHandle colorHandle = s_tgPools.gfxResourceInfos[s_resources.color].resourceHandle;
     const GfxImageHandle depthStencilHandle = s_tgPools.gfxResourceInfos[s_resources.depthStencil].resourceHandle;
-    const GfxImageHandle external_swapchainImage = s_tgPools.gfxResourceInfos[s_resources.external_swapchainImage].resourceHandle;
+    const GfxImageHandle external_swapchainImage = s_tgPools.gfxResourceInfos[s_resources.external_swapchainImage[gfx_swap_chain_index()]].resourceHandle;
     {
         GfxRenderPass* rp = render_pass_create("gfx_vulkan_clear_depth_run");
         rp->queue = GFX_RENDER_GRAPH_QUEUE_GRAPHICS;
         rp->dispatch = gfx_vulkan_clear_depth_run;
         rp->sizeType = ATTACHMENT_SWAPCHAIN;
-        rp->infoCtx.write[rp->infoCtx.writeCount++] = (struct WriteCtx){.binding = 0,                         .handle = colorHandle };
-        rp->infoCtx.write[rp->infoCtx.writeCount++] = (struct WriteCtx){.binding = GFX_RESOURCE_BINDING_NONE, .handle = depthStencilHandle };
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = 0,
+            .handle = colorHandle,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .acess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        };
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = TG_INVALID,
+            .handle = depthStencilHandle,
+            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .acess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        };
     }
     {
         GfxRenderPass* rp = render_pass_create("gfx_vulkan_imgui_run");
         rp->queue = GFX_RENDER_GRAPH_QUEUE_GRAPHICS;
         rp->dispatch = gfx_vulkan_imgui_run;
         rp->sizeType = ATTACHMENT_SWAPCHAIN;
-        rp->infoCtx.write[rp->infoCtx.writeCount++] = (struct WriteCtx){.binding = 0,                         .handle = colorHandle };
-        rp->infoCtx.write[rp->infoCtx.writeCount++] = (struct WriteCtx){.binding = GFX_RESOURCE_BINDING_NONE, .handle = depthStencilHandle };
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = 0,
+            .handle = colorHandle,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .acess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        };
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = TG_INVALID,
+            .handle = depthStencilHandle,
+            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .acess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        };
     }
     {
         GfxRenderPass* rp = render_pass_create("gfx_blit_to_swapchain");
         rp->queue = GFX_RENDER_GRAPH_QUEUE_BLIT;
         rp->dispatch = gfx_vulkan_blit_image_to_swapchain_run;
         rp->sizeType = ATTACHMENT_SWAPCHAIN;
-        rp->infoCtx.read[rp->infoCtx.readCount++] =   (struct ReadCtx) {.binding = 0, .handle = colorHandle };
-        rp->infoCtx.write[rp->infoCtx.writeCount++] = (struct WriteCtx){.binding = 0, .handle = external_swapchainImage};
+        rp->infoCtx.read[rp->infoCtx.readCount++] =   (PassCtx) {
+            .binding = 0,
+            .handle = colorHandle,
+            .layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .acess = VK_ACCESS_TRANSFER_READ_BIT,
+            .stage = VK_PIPELINE_STAGE_TRANSFER_BIT,
+        };
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = 0,
+            .handle = external_swapchainImage,
+            .layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .acess = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_TRANSFER_BIT,
+        };
     }
     {
         GfxRenderPass* rp = render_pass_create("gfx_vulkan_prepare_present_run");
-        rp->queue = GFX_RENDER_GRAPH_QUEUE_GRAPHICS;
+        rp->queue = GFX_RENDER_GRAPH_QUEUE_PRESENT;
         rp->dispatch = gfx_vulkan_prepare_present_run;
-        rp->infoCtx.read[rp->infoCtx.readCount++] = (struct ReadCtx){.binding = 0, .handle = external_swapchainImage};
+        rp->infoCtx.read[rp->infoCtx.readCount++] = (PassCtx){
+            .binding = 0,
+            .handle = external_swapchainImage,
+            .layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .acess = VK_ACCESS_NONE,
+            .stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        };
     }
 }
 //=============================================================================
@@ -327,7 +448,9 @@ static void gfx_resources_create(){
     s_resources = (struct TaskGraphResourceInfoHandles){
         .color = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_COLOR, &(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE}, "res_color", nullptr),
         .depthStencil = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_DEPTH_STENCIL, &(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE}, "res_depth", nullptr),
-        .external_swapchainImage = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb", gfx_get_current_swapchain_image_data ),
+        .external_swapchainImage[0] = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb[0]", gfx_get_current_swapchain_image_data ),
+        .external_swapchainImage[1] = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb[1]", gfx_get_current_swapchain_image_data ),
+        .external_swapchainImage[2] = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb[2]", gfx_get_current_swapchain_image_data ),
     };
 }
 
@@ -345,14 +468,23 @@ static void gfx_resources_cleanup(){
 }
 
 void gfx_task_graph_create(){
-    s_tgStringArena.alloc = allocators()->cstd.alloc(1 * KAH_KiB);
-    s_tgStringArena.count = 0;
+    if(!s_tgArenasAllocated){
+        s_tgRenderPassArena.alloc = allocators()->cstd.alloc(1 * KAH_KiB);
+        s_tgResourceArena.alloc = allocators()->cstd.alloc(1 * KAH_KiB);
+        s_tgArenasAllocated = true;
+    }
+
+    s_tgRenderPassArena.count = 0;
+    s_tgResourceArena.count = 0;
+
     gfx_resources_create();
 }
 
 void gfx_task_graph_cleanup(){
     gfx_resources_cleanup();
-    allocators()->cstd.free(s_tgStringArena.alloc);
-    s_tgStringArena.count = 0;
+    allocators()->cstd.free(s_tgRenderPassArena.alloc);
+    allocators()->cstd.free(s_tgResourceArena.alloc);
+    s_tgRenderPassArena.count = 0;
+    s_tgResourceArena.count = 0;
 }
 //=============================================================================

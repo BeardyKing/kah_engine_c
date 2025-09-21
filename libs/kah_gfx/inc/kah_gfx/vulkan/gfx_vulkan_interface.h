@@ -10,11 +10,16 @@
 vec2u gfx_vulkan_swapchain_size();
 GfxImage gfx_get_current_swapchain_image_data();
 void gfx_flush();
+
+uint32_t gfx_buffer_index();
+uint32_t gfx_swap_chain_index();
+uint32_t gfx_last_swap_chain_index();
 //=============================================================================
 
 //===COMMAND_BUFFER============================================================
 void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo);
 void gfx_command_end_rendering(VkCommandBuffer cmdBuffer);
+void gfx_command_insert_memory_barrier( VkCommandBuffer cmdBuffer, const VkImage *image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkImageSubresourceRange subresourceRange);
 //=============================================================================
 
 //===ATTACHMENTS===============================================================
@@ -23,15 +28,16 @@ VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView ima
 //=============================================================================
 
 //===RENDER_TASKS==============================================================
-void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
-void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
-void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
-void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, VkRenderingInfoKHR renderingInfo, GfxRenderContext ctx);
+void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
+void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
+void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
+void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
 //=============================================================================
 
 //===UTILS=====================================================================
 VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format();
 VkFormat gfx_vulkan_utils_find_depth_format(VkImageTiling desiredTilingFormat);
 //=============================================================================
+
 
 #endif //GFX_VULKAN_INTERFACE_H

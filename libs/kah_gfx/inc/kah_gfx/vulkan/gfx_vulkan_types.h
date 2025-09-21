@@ -7,6 +7,11 @@
 #include <kah_math/vec2.h>
 //=============================================================================
 
+//===GLOBAL_DEFINES============================================================
+constexpr uint32_t KAH_SWAP_CHAIN_IMAGE_COUNT = 3;
+constexpr uint32_t KAH_BUFFER_COUNT = 3;
+//=============================================================================
+
 //===POOL_TYPES================================================================
 struct GfxImage {
     VkImage image;
@@ -33,11 +38,11 @@ enum GfxResourceType : uint8_t{
     GFX_RESOURCE_NONE                   = 0,
     GFX_RESOURCE_IMAGE_COLOR            = 1 << 0,
     GFX_RESOURCE_IMAGE_DEPTH_STENCIL    = 2 << 0,
-    // GFX_RESOURCE_BUFFER              = 3 << 0,
-    GFX_RESOURCE_IMAGE_EXTERNAL_CB      = 4 << 0,
+    // GFX_RESOURCE_BUFFER              = 4 << 0,
+    GFX_RESOURCE_IMAGE_EXTERNAL_CB      = 5 << 0,
 }typedef GfxResourceType;
 
-#define GFX_RESOURCE_BINDING_NONE UINT32_MAX
+#define TG_INVALID UINT32_MAX
 
 struct GfxResource{
     GfxResourceType type;

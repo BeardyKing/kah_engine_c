@@ -4,6 +4,7 @@
 #include <kah_gfx/gfx_pool.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_resource.h>
+#include <kah_gfx/vulkan/gfx_vulkan_utils.h>
 
 #include <kah_core/allocators.h>
 #include <kah_core/assert.h>
@@ -18,6 +19,7 @@ constexpr size_t TG_ATTACHMENTS_MAX = 128;
 constexpr size_t TG_RENDER_PASS_NAME_MAX = 64;
 constexpr size_t TG_RENDER_PASS_ATTACHMENT_MAX = 8;
 constexpr char TG_ARENA_STRING_FALLBACK[TG_RENDER_PASS_NAME_MAX] = "err: no tg string memory remaining";
+constexpr bool TG_PRINT_INFO = false;
 
 struct GfxTaskGraph typedef GfxTaskGraph;
 struct GfxRenderPass typedef GfxRenderPass;
@@ -113,6 +115,8 @@ static struct GfxTaskGraphPools{
 //=============================================================================
 
 //===LOCAL_FUNCTIONS===========================================================
+#define task_graph_log(fmt, ...) if (TG_PRINT_INFO) { gfx_log_info(fmt, ##__VA_ARGS__); }
+
 static const char* task_graph_arena_string(TaskGraphArena* inArena, const char* inStr){
     core_assert(inArena->alloc);
     const size_t inStrLen = strlen(inStr) + 1;
@@ -217,6 +221,9 @@ static void gfx_task_graph_build_and_run_barriers(VkCommandBuffer cmdBuffer, con
             }
             core_assert(gfxImage.image != VK_NULL_HANDLE);
 
+            task_graph_log("tg: Barrier before: \noldLayout = \t%s \nsrcAccessMask = %s \nsrcStageMask = \t%s\n", VkImageLayout_c_str(info->lastLayout), VkAccessFlagBits_c_str(info->lastAccess) , VkPipelineStageFlags_c_str(info->lastStage));
+            task_graph_log("tg: Barrier after : \nnewLayout = \t%s \ndstAccessMask = %s \ndstStageMask = \t%s\n\n", VkImageLayout_c_str(ctx->layout), VkAccessFlagBits_c_str(ctx->acess) , VkPipelineStageFlags_c_str(ctx->stage));
+
             gfx_command_insert_memory_barrier(
                 cmdBuffer,
                 &gfxImage.image,
@@ -276,7 +283,7 @@ static void build_render_context_from_info_context(GfxRenderContext* ctx, const 
 
 static void gfx_task_graph_run_present(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
     core_assert(rp->infoCtx.readCount == 1 && rp->infoCtx.writeCount == 0);
-    gfx_log_verbose("render pass present: %s\n", rp->name);
+    task_graph_log("render pass present: %s\n", rp->name);
     GfxRenderContext renderCtx = {};
     build_render_context_from_info_context(&renderCtx, &rp->infoCtx);
 
@@ -285,7 +292,7 @@ static void gfx_task_graph_run_present(VkCommandBuffer cmdBuffer, const GfxRende
 
 static void gfx_task_graph_run_blit(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
     core_assert(rp->infoCtx.readCount == 1 && rp->infoCtx.writeCount == 1);
-    gfx_log_verbose("render pass blit: %s\n", rp->name);
+    task_graph_log("render pass blit: %s\n", rp->name);
 
     GfxRenderContext renderCtx = {};
     build_render_context_from_info_context(&renderCtx, &rp->infoCtx);
@@ -294,7 +301,7 @@ static void gfx_task_graph_run_blit(VkCommandBuffer cmdBuffer, const GfxRenderPa
 }
 
 static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRenderPass* rp){
-    gfx_log_verbose("render pass graphics: %s\n", rp->name);
+    task_graph_log("render pass graphics: %s\n", rp->name);
 
     core_assert(rp->sizeType != ATTACHMENT_NONE || (rp->attachmentSize.x == 0 && rp->attachmentSize.y == 0));
     core_assert(rp->sizeType != ATTACHMENT_ABSOLUTE || (rp->attachmentSize.x != 0 && rp->attachmentSize.y != 0));
@@ -350,10 +357,9 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
 
 //===API=======================================================================
 void gfx_task_graph_run(VkCommandBuffer cmdBuffer){
-    gfx_log_verbose("tg begin:\n");
+    task_graph_log("tg begin:\n");
     for (uint32_t renderPassIndex = 0; renderPassIndex < s_tg.renderPassCount; ++renderPassIndex){
         const GfxRenderPass* rp = &s_tg.renderPasses[renderPassIndex];
-        gfx_log_verbose("rp begin: %s\n",rp->name);
         core_assert(rp->infoCtx.readCount <= GFX_RENDER_CONTEXT_READ_WRITE_MAX);
         core_assert(rp->infoCtx.writeCount <= GFX_RENDER_CONTEXT_READ_WRITE_MAX);
 
@@ -377,7 +383,7 @@ void gfx_task_graph_run(VkCommandBuffer cmdBuffer){
             break;
         }
     }
-    gfx_log_verbose("tg end:\n");
+    task_graph_log("tg end:\n");
 }
 
 void gfx_task_graph_build(){

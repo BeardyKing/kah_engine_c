@@ -970,7 +970,9 @@ static VkResult gfx_acquire_next_swap_chain_image() {
 static bool query_has_valid_extent_size() {
     VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_gfx.physicalDevice, s_gfx.swapChain.surface, &surfaceCapabilities);
-    return surfaceCapabilities.currentExtent.width != 0 || surfaceCapabilities.currentExtent.height != 0;
+    s_gfx.swapChain.width = surfaceCapabilities.currentExtent.width;
+    s_gfx.swapChain.height = surfaceCapabilities.currentExtent.height;
+    return s_gfx.swapChain.width != 0 || s_gfx.swapChain.height != 0;
 }
 
 
@@ -1266,6 +1268,10 @@ void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, GfxRenderContext 
 vec2u gfx_vulkan_swapchain_size(){
     return (vec2u){s_gfx.swapChain.width,s_gfx.swapChain.height};
 }
+
+bool gfx_has_drawable_surface(){
+    return s_gfx.swapChain.width != 0 || s_gfx.swapChain.height != 0;
+};
 //=============================================================================
 
 //===API/GFX_VULKAN_INTERFACE/UTILS============================================

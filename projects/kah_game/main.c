@@ -42,7 +42,10 @@ void test_run_all(){
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
 void imgui_update() {
     gfx_imgui_begin();
-    gfx_imgui_demo_window();
+    if(gfx_has_drawable_surface()){
+        gfx_imgui_demo_window();
+        //Client side imgui code must run based on has gfx_has_drawable_surface test.
+    }
 }
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 

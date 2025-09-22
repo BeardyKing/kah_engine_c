@@ -3,12 +3,14 @@
 #include <kah_gfx/gfx_task_graph.h>
 #include <kah_gfx/gfx_logging.h>
 #include <kah_gfx/gfx_pool.h>
+#include <kah_gfx/gfx_converter.h>
 #include <kah_gfx/vulkan/gfx_vulkan.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_surface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
-#include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
 #include <kah_gfx/vulkan/gfx_vulkan_utils.h>
+#include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
+#include <kah_gfx/vulkan/gfx_vulkan_lit.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -20,6 +22,7 @@
 #include <kah_math/vec2.h>
 
 #include <stdio.h>
+
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
@@ -1324,6 +1327,10 @@ VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
 
 //===INIT/SHUTDOWN=============================================================
 void gfx_create(void* windowHandle){
+#if CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
+    gfx_converter_create(CONVERTER_SRC_ASSRT_DIR , CONVERTER_RUNTIME_ASSET_DIR);
+#endif //CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
+
     gfx_pool_create();
     gfx_data_structures_create();
     gfx_volk_create();
@@ -1344,10 +1351,12 @@ void gfx_create(void* windowHandle){
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_imgui_create(windowHandle);
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
+    gfx_lit_create();
 }
 
 void gfx_cleanup(){
     gfx_flush();
+    gfx_lit_cleanup();
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_imgui_cleanup();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)

@@ -6,15 +6,17 @@ if(MSVC)
 endif()
 
 set(KAH_CMAKE_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+add_compile_definitions("KAH_CMAKE_SRC_ASSETS_DIR=\"${KAH_CMAKE_ROOT_DIR}/\"")
+add_compile_definitions("KAH_CMAKE_RUNTIME_ASSETS_DIR=\"${CMAKE_BINARY_DIR}/dist/runtime/\"")
 
 #====THIRD_PARTY_LIBS=====
 add_subdirectory(libs/third_party)
 
 #====LIBS=================
 add_subdirectory(libs/kah_core)
+add_subdirectory(libs/kah_converter)
 add_subdirectory(libs/kah_math)
 add_subdirectory(libs/kah_gfx)
-#add_subdirectory(libs/kah_converter)
 
 #====PROJECTS=============
 add_subdirectory(projects/kah_game)

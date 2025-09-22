@@ -23,6 +23,7 @@
 #define FEATURE_RUN_TESTS FEATURE_OFF
 #define FEATURE_ASSERTS CHECK_FEATURE(KAH_DEBUG)
 #define FEATURE_GFX_IMGUI FEATURE_ON
+#define FEATURE_CONVERT_ON_DEMAND FEATURE_ON
 //=============================================================================
 
 //===IMPL======================================================================
@@ -39,6 +40,13 @@
     #define CORE_FORCE_INLINE inline __attribute__((always_inline))
 #else
     #define CORE_FORCE_INLINE inline
+#endif
+//=============================================================================
+
+//===PATHS=====================================================================
+#if CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
+#define CONVERTER_SRC_ASSRT_DIR KAH_CMAKE_SRC_ASSETS_DIR
+#define CONVERTER_RUNTIME_ASSET_DIR KAH_CMAKE_RUNTIME_ASSETS_DIR
 #endif
 //=============================================================================
 #endif // DEFINES_H

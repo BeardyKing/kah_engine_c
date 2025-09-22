@@ -30,6 +30,8 @@ add_library(kah_core
         inc/kah_core/c_string.h
         src/c_string.c
         inc/kah_core/logging.h
+        inc/kah_core/filesystem.h
+        src/filesystem_win32.c
 )
 
 target_include_directories(kah_core

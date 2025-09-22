@@ -4,6 +4,8 @@ add_executable(kah_game
         main.c
 )
 
+set_target_properties(kah_game PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/dist/runtime")
+
 target_link_libraries(kah_game
         kah_math
         kah_core

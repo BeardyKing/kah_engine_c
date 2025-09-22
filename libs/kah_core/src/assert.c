@@ -45,4 +45,19 @@ bool _core_not_implemented_impl(const char* file, const char* function, int line
     internal_core_print_error("Hit unimplemented code o_o\n");
     return false;
 }
+
+bool _core_sanity_impl(const char* file, const char* function, int line){
+    internal_core_log_current_position(file, function, line);
+    internal_core_print_error("Failed sanity check\n");
+    return false;
+}
+bool _core_sanity_msg_impl(const char* file, const char* function, int line, const char* fmt, ...){
+    internal_core_log_current_position(file, function, line);
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+    return false;
+
+}
 //=============================================================================

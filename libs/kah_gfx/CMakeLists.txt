@@ -21,6 +21,12 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan_resource.c
         inc/kah_gfx/vulkan/gfx_vulkan_utils.h
         src/vulkan/gfx_vulkan_utils.c
+        inc/kah_gfx/vulkan/gfx_vulkan_lit.h
+        src/vulkan/gfx_vulkan_lit.c
+        inc/kah_gfx/vulkan/gfx_vulkan_shader.h
+        src/vulkan/gfx_vulkan_shader.c
+        inc/kah_gfx/gfx_converter.h
+        src/gfx_converter.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
@@ -52,6 +58,7 @@ find_package(Vulkan REQUIRED)
 target_link_libraries(kah_gfx
         kah_core
         kah_math
+        kah_converter
 
         volk
         volk_headers

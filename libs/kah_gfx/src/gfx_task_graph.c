@@ -199,13 +199,18 @@ static void gfx_task_graph_build_and_run_barriers(VkCommandBuffer cmdBuffer, con
     for (uint32_t readIndex = 0; readIndex < passCount; ++readIndex){
         const PassCtx* ctx = &passCtxArray[readIndex];
         const GfxResource* resource = &s_tgPools.gfxResources[ctx->handle];
+        GfxResourceInfo* info = &s_tgPools.gfxResourceInfos[ctx->handle];
 
-        if( resource->type == GFX_RESOURCE_IMAGE_COLOR ||
-            resource->type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL ||
-            resource->type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
-            GfxResourceInfo* info = &s_tgPools.gfxResourceInfos[ctx->handle];
+        const bool accessMatch = info->lastAccess == ctx->acess;
+        const bool layoutMatch = info->lastLayout == ctx->layout;
+        const bool stageMatch = info->lastStage == ctx->stage;
+
+        if(accessMatch && layoutMatch && stageMatch){
+            continue;
+        }
+
+        if(resource->type != GFX_RESOURCE_NONE){
             VkImageAspectFlags imageAspectFlags = {};
-
             GfxImage gfxImage = {};
             if(resource->type == GFX_RESOURCE_IMAGE_COLOR){
                 gfxImage = *gfx_pool_get_gfx_image(resource->data.imageColor.handle);

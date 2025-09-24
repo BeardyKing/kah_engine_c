@@ -5,6 +5,7 @@ add_library(kah_converter
         src/converter_backend.c
         src/converter_shader.c
         src/converter_cache.c
+        src/converter_texture.c
 )
 
 target_include_directories(kah_converter

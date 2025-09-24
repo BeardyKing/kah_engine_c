@@ -1,20 +1,23 @@
+#include <stdio.h>
 #include <kah_gfx/gfx_converter.h>
 #include <kah_gfx/gfx_logging.h>
 
 #include <kah_converter/converter_interface.h>
 
 #include <kah_core/assert.h>
-// #include <kah_core/c_string.h>
+
+#include "kah_core/c_string.h"
+#include "kah_core/texture_formats.h"
 
 extern ConverterLocations g_converterLocations;
 
-// constexpr uint32_t SUPPORTED_CONVERTER_FORMATS_COUNT = 4;
-// constexpr const char *SUPPORTED_CONVERTER_FORMATS[SUPPORTED_CONVERTER_FORMATS_COUNT]{
-//         ".png",
-//         ".tga",
-//         ".jpg",
-//         ".exr",
-// };
+#define SUPPORTED_CONVERTER_FORMATS_COUNT 4
+const char *SUPPORTED_CONVERTER_FORMATS[SUPPORTED_CONVERTER_FORMATS_COUNT] = {
+        ".png",
+        ".tga",
+        ".jpg",
+        ".exr",
+};
 
 #if CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
 //===API================================================================================================================
@@ -40,36 +43,35 @@ bool gfx_convert_shader_spv(const char *localAssetPath) {
     return compileResult;
 }
 
-bool gfx_convert_texture_dds(const char *localAssetPath) {
-    core_not_implemented();
-    return false;
-    // const char *delim = (c_str_search_reverse(localAssetPath, "."));
-    // if (c_str_search_reverse(localAssetPath, ".") != nullptr) {
-    //     core_sanity();
-    // }
-    // size_t copySize = delim - localAssetPath;
-    // char fileNameNoExt[256] = {};
-    // memcpy(fileNameNoExt, localAssetPath, copySize);
-    //
-    // char searchFileName[256] = {};
-    // uint32_t foundIndex = {};
-    // bool foundFile = false;
-    // for (uint32_t i = 0; i < SUPPORTED_CONVERTER_FORMATS_COUNT; ++i) {
-    //     memset(searchFileName, 0, sizeof(char) * KAH_FILESYSTEM_MAX_PATH);
-    //     sprintf(searchFileName, "%s%s%s", &g_converterLocations.rawAssetDir[0], fileNameNoExt, SUPPORTED_CONVERTER_FORMATS[i]);
-    //     foundFile = fs_file_exists(searchFileName);
-    //     if (foundFile) {
-    //         foundIndex = i;
-    //         break;
-    //     }
-    // }
-    //
-    // core_assert(foundFile);
-    // const char *ext = SUPPORTED_CONVERTER_FORMATS[foundIndex];
-    // const bool compileResult = convert_texture_dds(fileNameNoExt, ext, strcmp(ext, ".exr") ? TextureFormat::BC6H : TextureFormat::BC7);
-    // // This is quite a hack to get things working, as a concept.
-    // // I think I should instead add some .meta file or some authored material file where I can grab converter info from.
-    // return compileResult;
+bool gfx_convert_texture_dds(char *localAssetPath) {
+    const char *delim = (c_str_search_reverse(localAssetPath, "."));
+    if (c_str_search_reverse(localAssetPath, ".") != nullptr) {
+        core_sanity();
+    }
+    size_t copySize = delim - localAssetPath;
+    char fileNameNoExt[256] = {};
+    memcpy(fileNameNoExt, localAssetPath, copySize);
+
+    char searchFileName[KAH_FILESYSTEM_MAX_PATH] = {};
+    uint32_t foundIndex = {};
+    bool foundFile = false;
+    for (uint32_t i = 0; i < SUPPORTED_CONVERTER_FORMATS_COUNT; ++i) {
+        memset(searchFileName, 0, sizeof(char) * KAH_FILESYSTEM_MAX_PATH);
+        sprintf(searchFileName, "%s%s%s", &g_converterLocations.rawAssetDir[0], fileNameNoExt, SUPPORTED_CONVERTER_FORMATS[i]);
+        foundFile = fs_file_exists(searchFileName);
+        if (foundFile) {
+            foundIndex = i;
+            break;
+        }
+    }
+
+    core_assert(foundFile);
+    const char *ext = SUPPORTED_CONVERTER_FORMATS[foundIndex];
+    const bool compileResult = convert_texture_dds(fileNameNoExt, ext, strcmp(ext, ".exr") ? CORE_TEXTURE_FORMAT_BC6H : CORE_TEXTURE_FORMAT_BC7);
+    // This is quite a hack to get things working, as a concept.
+    // I think I should instead add some .meta file or some authored material file where I can grab converter info from.
+    // meta file needed for things such as fonts & pixel art
+    return compileResult;
 }
 
 //======================================================================================================================

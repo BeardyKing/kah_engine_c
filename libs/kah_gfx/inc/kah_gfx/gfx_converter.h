@@ -8,7 +8,7 @@
 //===API=======================================================================
 void gfx_converter_create(const char *rawAssetDir, const char *targetAssetDir);
 bool gfx_convert_shader_spv(const char *localAssetPath);
-bool gfx_convert_texture_dds(const char *localAssetPath);
+bool gfx_convert_texture_dds(char *localAssetPath);
 //=============================================================================
 #endif //CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
 

@@ -1,4 +1,5 @@
 //===INCLUDES==================================================================
+#include <kah_gfx/vulkan/gfx_vulkan_utils.h>
 #include <kah_gfx/vulkan/gfx_vulkan.h>
 #include <kah_core/assert.h>
 //=============================================================================
@@ -104,37 +105,38 @@ const char* VkAccessFlagBits_c_str( const VkAccessFlagBits accessFlagBits ){
     return GFX_UTIL_NOT_FOUND_STR;
 }
 
-const char* VkPipelineStageFlags_c_str( const VkPipelineStageFlags pipelineStageFlags ){
+const char* VkPipelineStageFlags_c_str( const VkPipelineStageFlags pipelineStageFlags )
+{
     switch (pipelineStageFlags){
-        case VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT:                             return "VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT";
-        case VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT:                           return "VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT";
-        case VK_PIPELINE_STAGE_VERTEX_INPUT_BIT:                            return "VK_PIPELINE_STAGE_VERTEX_INPUT_BIT";
-        case VK_PIPELINE_STAGE_VERTEX_SHADER_BIT:                           return "VK_PIPELINE_STAGE_VERTEX_SHADER_BIT";
-        case VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT:             return "VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT";
-        case VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT:          return "VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT";
-        case VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT:                         return "VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT";
-        case VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT:                         return "VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT";
-        case VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT:                    return "VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT";
-        case VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT:                     return "VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT";
-        case VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT:                 return "VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT";
-        case VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT:                          return "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
-        case VK_PIPELINE_STAGE_TRANSFER_BIT:                                return "VK_PIPELINE_STAGE_TRANSFER_BIT";
-        case VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT:                          return "VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT";
-        case VK_PIPELINE_STAGE_HOST_BIT:                                    return "VK_PIPELINE_STAGE_HOST_BIT";
-        case VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT:                            return "VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT";
-        case VK_PIPELINE_STAGE_ALL_COMMANDS_BIT:                            return "VK_PIPELINE_STAGE_ALL_COMMANDS_BIT";
-        case VK_PIPELINE_STAGE_NONE:                                        return "VK_PIPELINE_STAGE_NONE";
-        case VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT:                  return "VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT";
-        case VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT:               return "VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT";
-        case VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR:        return "VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR";
-        case VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR:                  return "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR";
-        case VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT:            return "VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT";
-        case VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:    return "VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
-        case VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV:                   return "VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV";
-        case VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT:                         return "VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT";
-        case VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT:                         return "VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT";
-        case VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM:                          return "VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM";
-        default:;
+    case VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT:                             return "VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT";
+    case VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT:                           return "VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT";
+    case VK_PIPELINE_STAGE_VERTEX_INPUT_BIT:                            return "VK_PIPELINE_STAGE_VERTEX_INPUT_BIT";
+    case VK_PIPELINE_STAGE_VERTEX_SHADER_BIT:                           return "VK_PIPELINE_STAGE_VERTEX_SHADER_BIT";
+    case VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT:             return "VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT";
+    case VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT:          return "VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT";
+    case VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT:                         return "VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT";
+    case VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT:                         return "VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT";
+    case VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT:                    return "VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT";
+    case VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT:                     return "VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT";
+    case VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT:                 return "VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT";
+    case VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT:                          return "VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT";
+    case VK_PIPELINE_STAGE_TRANSFER_BIT:                                return "VK_PIPELINE_STAGE_TRANSFER_BIT";
+    case VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT:                          return "VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT";
+    case VK_PIPELINE_STAGE_HOST_BIT:                                    return "VK_PIPELINE_STAGE_HOST_BIT";
+    case VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT:                            return "VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT";
+    case VK_PIPELINE_STAGE_ALL_COMMANDS_BIT:                            return "VK_PIPELINE_STAGE_ALL_COMMANDS_BIT";
+    case VK_PIPELINE_STAGE_NONE:                                        return "VK_PIPELINE_STAGE_NONE";
+    case VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT:                  return "VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT";
+    case VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT:               return "VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT";
+    case VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR:        return "VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR";
+    case VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR:                  return "VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR";
+    case VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT:            return "VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT";
+    case VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:    return "VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR";
+    case VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV:                   return "VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV";
+    case VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT:                         return "VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT";
+    case VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT:                         return "VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT";
+    case VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM:                          return "VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM";
+    default:;
         //DUPLICATE case VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV:
         //DUPLICATE case VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV:
         //DUPLICATE case VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV:
@@ -146,4 +148,24 @@ const char* VkPipelineStageFlags_c_str( const VkPipelineStageFlags pipelineStage
     core_not_implemented();
     return GFX_UTIL_NOT_FOUND_STR;
 }
+
+VkFormat gfx_utils_core_image_format_to_vk( CoreTextureFormat textureFormat ) {
+    switch (textureFormat) {
+        case CORE_TEXTURE_FORMAT_RGBA8:   return VK_FORMAT_R8G8B8A8_UNORM;
+        case CORE_TEXTURE_FORMAT_RGBA16:  return VK_FORMAT_R16G16B16A16_UNORM;
+
+        case CORE_TEXTURE_FORMAT_BC1RGBA: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        case CORE_TEXTURE_FORMAT_BC2:     return VK_FORMAT_BC2_UNORM_BLOCK;
+        case CORE_TEXTURE_FORMAT_BC3:     return VK_FORMAT_BC3_UNORM_BLOCK;
+        case CORE_TEXTURE_FORMAT_BC4:     return VK_FORMAT_BC4_UNORM_BLOCK;
+        case CORE_TEXTURE_FORMAT_BC5:     return VK_FORMAT_BC5_UNORM_BLOCK;
+        case CORE_TEXTURE_FORMAT_BC6H:    return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+        case CORE_TEXTURE_FORMAT_BC7:     return VK_FORMAT_BC7_UNORM_BLOCK;
+        default:;
+    };
+    core_not_implemented();
+    return VK_FORMAT_UNDEFINED;
+}
+
+
 //=============================================================================

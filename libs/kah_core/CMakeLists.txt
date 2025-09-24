@@ -32,6 +32,9 @@ add_library(kah_core
         inc/kah_core/logging.h
         inc/kah_core/filesystem.h
         src/filesystem_win32.c
+        inc/kah_core/dds_loader.h
+        src/dds_loader.c
+        inc/kah_core/texture_formats.h
 )
 
 target_include_directories(kah_core

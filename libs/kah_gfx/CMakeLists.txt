@@ -27,6 +27,8 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan_shader.c
         inc/kah_gfx/gfx_converter.h
         src/gfx_converter.c
+        inc/kah_gfx/vulkan/gfx_vulkan_bindless.h
+        src/vulkan/gfx_vulkan_bindless.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)

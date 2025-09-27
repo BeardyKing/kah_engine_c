@@ -11,6 +11,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_utils.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
 #include <kah_gfx/vulkan/gfx_vulkan_lit.h>
+#include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -1347,6 +1348,7 @@ void gfx_create(void* windowHandle){
     gfx_fences_create();
     gfx_task_graph_create();
     gfx_pipeline_cache_create();
+    gfx_bindless_create();
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_imgui_create(windowHandle);
@@ -1361,6 +1363,7 @@ void gfx_cleanup(){
     gfx_imgui_cleanup();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
+    gfx_bindless_cleanup();
     gfx_pipeline_cache_cleanup();
     gfx_task_graph_cleanup();
     gfx_fences_cleanup();

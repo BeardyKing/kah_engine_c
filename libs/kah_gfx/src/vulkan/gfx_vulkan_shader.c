@@ -17,21 +17,22 @@ extern GlobalGfx g_gfx;
 //===API=======================================================================
 VkShaderModule gfx_shader_load_binary(const char *path){
     int fd = open(path, O_RDONLY | O_BINARY);
-    core_assert_msg(fd >= 0,"Err: Failed to open shader file");
+    core_assert_msg(fd >= 0,"err: Failed to open shader file");
 
-    struct stat st;
-    core_assert_msg(fstat(fd, &st) == 0, "Err: fstat failed");
+    struct stat st = (struct stat){};
+    const int statResult = fstat(fd, &st);
+    core_assert_msg( statResult == 0, "err: fstat failed");
 
-    size_t size = st.st_size;
+    const size_t size = st.st_size;
     core_assert(size > 0);
 
     AllocInfo* alloc = allocators()->arena.alloc(size);
 
     char *shaderCode = (char *)alloc->bufferAddress;
-    ssize_t bytesRead = read(fd, shaderCode, size);
+    const ssize_t bytesRead = read(fd, shaderCode, size);
     close(fd);
 
-    core_assert_msg(bytesRead == (ssize_t)size,"Err: Failed to read shader file");
+    core_assert_msg(bytesRead == (ssize_t)size,"err: Failed to read shader file");
     VkShaderModuleCreateInfo moduleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = NULL,
@@ -41,7 +42,7 @@ VkShaderModule gfx_shader_load_binary(const char *path){
     };
 
     VkShaderModule shaderModule = VK_NULL_HANDLE;
-    VkResult moduleResult = vkCreateShaderModule(
+    const VkResult moduleResult = vkCreateShaderModule(
         g_gfx.device, &moduleCreateInfo, NULL, &shaderModule
     );
     core_assert(moduleResult == VK_SUCCESS);

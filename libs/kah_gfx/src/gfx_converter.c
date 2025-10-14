@@ -45,9 +45,7 @@ bool gfx_convert_shader_spv(const char *localAssetPath) {
 
 bool gfx_convert_texture_dds(char *localAssetPath) {
     const char *delim = (c_str_search_reverse(localAssetPath, "."));
-    if (c_str_search_reverse(localAssetPath, ".") != nullptr) {
-        core_sanity();
-    }
+    core_assert(c_str_search_reverse(localAssetPath, ".") != nullptr);
     size_t copySize = delim - localAssetPath;
     char fileNameNoExt[256] = {};
     memcpy(fileNameNoExt, localAssetPath, copySize);

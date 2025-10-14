@@ -38,10 +38,13 @@ bool convert_texture_dds(const char *localAssetDir, const char *inFileFormat, co
     char inPath[KAH_FILESYSTEM_MAX_PATH * 2];
     char outPath[KAH_FILESYSTEM_MAX_PATH * 2];
 
-    snprintf(inPath, sizeof(inPath), "%s%s", g_converterLocations.rawAssetDir, localAssetDir);
-    snprintf(outPath, sizeof(outPath), "%s%s", g_converterLocations.targetAssetDir, localAssetDir);
+    snprintf(inPath, sizeof(inPath), "%s%s%s", g_converterLocations.rawAssetDir, localAssetDir, inFileFormat);
+    snprintf(outPath, sizeof(outPath), "%s%s.dds", g_converterLocations.targetAssetDir, localAssetDir);
+
+    fs_mkdir_recursive(outPath);
 
     if (!fs_file_exists(inPath)) {
+        printf("no file at path: %s \n", inPath);
         return false;
     }
 

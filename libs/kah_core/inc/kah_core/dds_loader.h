@@ -12,7 +12,7 @@
 // https://learn.microsoft.com/en-us/windows/uwp/gaming/complete-code-for-ddstextureloader
 
 //===API=======================================================================
-void load_dds_image_alloc(const char *path, CoreRawImage *outRawImage);
+void load_dds_image_alloc(Allocator allocator, const char *path, CoreRawImage *outRawImage);
 //=============================================================================
 
 #endif //DDS_LOADER_H

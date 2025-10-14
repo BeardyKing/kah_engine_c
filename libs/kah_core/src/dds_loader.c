@@ -408,8 +408,7 @@ static void get_image_info( uint32_t width, uint32_t height, TextureFormatDXGI t
 //======================================================================================================================
 
 //===API================================================================================================================
-void load_dds_image_alloc(const char *path, CoreRawImage *outRawImage) {
-    //TODO: may want to pass in an allocator here instead. maybe some load time memory arena that is reset after all upload fences have finished from last frame
+void load_dds_image_alloc(Allocator allocator, const char *path, CoreRawImage *outRawImage) {
     int fd = open(path, O_RDONLY | O_BINARY);
     core_assert_msg(fd, "err: failed to open .dds file %s", path);
 
@@ -428,7 +427,8 @@ void load_dds_image_alloc(const char *path, CoreRawImage *outRawImage) {
     core_assert_msg(isMatchFourCC, "err: input header did not match [D][D][S][] received [%c][%c][%c][%c] for path : %s \n", ext[0], ext[1], ext[2], ext[3], path);
 
     size_t remainingSize = fileSize - 4;
-    char *rawFileData = (char *)allocators()->arena.alloc(remainingSize)->bufferAddress;
+    AllocInfo* fileAlloc = allocator.alloc(remainingSize);
+    char *rawFileData = (char *)fileAlloc->bufferAddress;
     if (read(fd, rawFileData, remainingSize) != (ssize_t)remainingSize) {
         printf("err: failed to read DDS file contents: %s\n", path);
         close(fd);
@@ -450,9 +450,9 @@ void load_dds_image_alloc(const char *path, CoreRawImage *outRawImage) {
 
     const HeaderDDSDXT10 *d3d10ext = (const HeaderDDSDXT10 *)(rawFileData + sizeof(HeaderDDS));
 
-    uint32_t outNumBytes = 0;;
-    uint32_t outRowBytes = 0;;
-    uint32_t outNumRows = 0;;
+    uint32_t outNumBytes = 0;
+    uint32_t outRowBytes = 0;
+    uint32_t outNumRows = 0;
     size_t sumOfMipData = 0;
     for (int i = 0; i < mipCount; ++i) {
         if (constexpr_make_four_cc('D', 'X', '1', '0') == header->ddspf.dwFourCC) {
@@ -471,9 +471,9 @@ void load_dds_image_alloc(const char *path, CoreRawImage *outRawImage) {
     outRawImage->depth = depth;
     outRawImage->dataSize = sumOfMipData;
 
-    outRawImage->data = (unsigned char *) allocators()->arena.alloc(outRawImage->dataSize)->bufferAddress;
-    memcpy(outRawImage->data, imageStartPos, outRawImage->dataSize);
+    outRawImage->imageData = allocator.alloc(outRawImage->dataSize);
+    memcpy(outRawImage->imageData->bufferAddress, imageStartPos, outRawImage->dataSize);
 
-    // mem_free(rawFileData);
+    allocator.free(fileAlloc);
 }
 //======================================================================================================================

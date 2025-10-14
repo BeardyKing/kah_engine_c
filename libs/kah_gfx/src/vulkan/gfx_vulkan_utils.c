@@ -167,5 +167,16 @@ VkFormat gfx_utils_core_image_format_to_vk( CoreTextureFormat textureFormat ) {
     return VK_FORMAT_UNDEFINED;
 }
 
+uint32_t gfx_utils_get_memory_type(VkPhysicalDeviceMemoryProperties deviceMemoryProperties, uint32_t memoryTypeBits, VkMemoryPropertyFlags properties) {
+    for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
+        if ((memoryTypeBits & 1) == 1) {
+            if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+        memoryTypeBits >>= 1;
+    }
+    return UINT32_MAX; // TODO:TEST: validate this is the correct value to return to crash the backend.
+}
 
 //=============================================================================

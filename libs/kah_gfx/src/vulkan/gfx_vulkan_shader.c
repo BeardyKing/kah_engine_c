@@ -42,9 +42,7 @@ VkShaderModule gfx_shader_load_binary(const char *path){
     };
 
     VkShaderModule shaderModule = VK_NULL_HANDLE;
-    const VkResult moduleResult = vkCreateShaderModule(
-        g_gfx.device, &moduleCreateInfo, NULL, &shaderModule
-    );
+    const VkResult moduleResult = vkCreateShaderModule( g_gfx.device, &moduleCreateInfo, NULL, &shaderModule );
     core_assert(moduleResult == VK_SUCCESS);
     return shaderModule;
 }

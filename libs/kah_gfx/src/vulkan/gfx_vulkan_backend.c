@@ -12,6 +12,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
 #include <kah_gfx/vulkan/gfx_vulkan_lit.h>
 #include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
+#include <kah_gfx/vulkan/gfx_vulkan_texture.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -86,6 +87,9 @@ static struct GfxBackend{
     VkFence graphicsFenceWait[KAH_SWAP_CHAIN_IMAGE_COUNT];
     GfxSemaphores semaphores[KAH_SWAP_CHAIN_IMAGE_COUNT];
 
+    VkCommandBuffer commandBufferImmediate;
+    bool commandBufferImmediateInUse;
+
     VkPhysicalDeviceProperties deviceProperties;
     VkPhysicalDeviceFeatures deviceFeatures;
     VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
@@ -112,6 +116,12 @@ static struct GfxUserArguments {
     bool vsync;
     VkSampleCountFlagBits msaa;
 } s_userArguments = {};
+
+static struct BuiltInTextures{
+    GfxTexture* blackTexture;
+    GfxTexture* whiteTexture;
+    GfxTexture* uvGridTexture;
+} s_builtIn;
 
 static struct GfxFeatures{
     VkPhysicalDeviceFeatures2 deviceFeatures;
@@ -881,17 +891,28 @@ static void gfx_swap_chain_cleanup(){
 }
 
 static void gfx_command_buffers_create(){
-    const VkCommandBufferAllocateInfo gfxCommandBufferInfo = (VkCommandBufferAllocateInfo){
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = s_gfx.commandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = KAH_SWAP_CHAIN_IMAGE_COUNT,
-    };
+    {
+        const VkCommandBufferAllocateInfo gfxCommandBufferInfo = (VkCommandBufferAllocateInfo){
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = s_gfx.commandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = KAH_SWAP_CHAIN_IMAGE_COUNT,
+        };
 
-    VkResult cmdBuffResult = vkAllocateCommandBuffers(g_gfx.device, &gfxCommandBufferInfo, s_gfx.commandBuffers);
-    core_assert_msg(cmdBuffResult == VK_SUCCESS, "err: Failed to create graphics command buffer");
-
-    //Consider adding upload cmd buffer.
+        VkResult cmdBuffResult = vkAllocateCommandBuffers(g_gfx.device, &gfxCommandBufferInfo, s_gfx.commandBuffers);
+        core_assert_msg(cmdBuffResult == VK_SUCCESS, "err: Failed to create graphics command buffer");
+    }
+    {
+        VkCommandBufferAllocateInfo immediateCommandBufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = s_gfx.commandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1,
+        };
+        core_assert(s_gfx.commandBufferImmediate == VK_NULL_HANDLE);
+        VkResult cmdImmediateBufferResult = vkAllocateCommandBuffers(g_gfx.device, &immediateCommandBufferInfo,&s_gfx.commandBufferImmediate);
+        core_assert_msg(cmdImmediateBufferResult == VK_SUCCESS, "err: failed to create immediate command buffer");
+    }
 }
 
 static void gfx_command_buffers_cleanup(){
@@ -928,6 +949,26 @@ static void gfx_pipeline_cache_create(){
     pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
     const VkResult cacheRes = vkCreatePipelineCache(g_gfx.device, &pipelineCacheCreateInfo, g_gfx.allocationCallbacks, &s_gfx.pipelineCache);
     core_assert_msg(cacheRes == VK_SUCCESS, "err: Failed to create pipeline cache");
+}
+
+static void gfx_texture_builtin_create(){
+    s_builtIn.blackTexture = gfx_texture_load_from_file("assets/textures/black.dds");
+    s_builtIn.whiteTexture = gfx_texture_load_from_file("assets/textures/white.dds");
+    s_builtIn.uvGridTexture = gfx_texture_load_from_file("assets/textures/UV_Grid/UV_Grid_test.dds");
+
+    s_builtIn.blackTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_BLACK;
+    s_builtIn.whiteTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_WHITE;
+    s_builtIn.uvGridTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV;
+
+    gfx_bindless_set_image(s_builtIn.blackTexture->bindlessIndex, s_builtIn.blackTexture->imageView);
+    gfx_bindless_set_image(s_builtIn.whiteTexture->bindlessIndex, s_builtIn.whiteTexture->imageView);
+    gfx_bindless_set_image(s_builtIn.uvGridTexture->bindlessIndex, s_builtIn.uvGridTexture->imageView);
+}
+
+static void gfx_texture_builtin_cleanup(){
+    gfx_texture_cleanup(s_builtIn.blackTexture);
+    gfx_texture_cleanup(s_builtIn.whiteTexture);
+    gfx_texture_cleanup(s_builtIn.uvGridTexture);
 }
 
 static void gfx_pipeline_cache_cleanup(){
@@ -1018,30 +1059,33 @@ static bool gfx_window_resize() {
     return true;
 }
 
-static void gfx_command_begin_immediate_recording() {
-    // add immediate cmd buf instead of reusing the current queue
-    // add validation that cmd buf isn't already in use
-    VkCommandBufferBeginInfo cmdBufBeginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    cmdBufBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(s_gfx.commandBuffers[gfx_buffer_index()], &cmdBufBeginInfo);
+VkCommandBuffer gfx_command_buffer_start_immediate_recording() {
+    core_assert(!s_gfx.commandBufferImmediateInUse);
+    s_gfx.commandBufferImmediateInUse = true;
+    const VkCommandBufferBeginInfo cmdBufBeginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    vkBeginCommandBuffer(s_gfx.commandBufferImmediate, &cmdBufBeginInfo);
+    return s_gfx.commandBufferImmediate;
 }
 
-static void gfx_command_end_immediate_recording() {
-    // add immediate cmd buf
-    // add validation that cmd buf isn't already in use
-    vkEndCommandBuffer(s_gfx.commandBuffers[gfx_buffer_index()]);
+void gfx_command_buffer_end_immediate_recording(VkCommandBuffer cmdBuffer) {
+    core_assert(s_gfx.commandBufferImmediateInUse);
+    vkEndCommandBuffer(cmdBuffer);
 
-    VkSubmitInfo submitInfo = (VkSubmitInfo){
+    const VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .commandBufferCount = 1,
-        .pCommandBuffers = &s_gfx.commandBuffers[gfx_buffer_index()],
+        .pCommandBuffers = &cmdBuffer,
     };
-    //TODO:GFX replace immediate submit with transfer immediate submit.
+
     vkQueueSubmit(g_gfx.queue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(g_gfx.queue);
+    vkQueueWaitIdle(g_gfx.queue);// if this is run more than once per frame we should batch
+    s_gfx.commandBufferImmediateInUse = false;
 }
 
-void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
+void gfx_command_buffer_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
     //TODO: Resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdBeginRendering(cmdBuffer, renderingInfo);
@@ -1049,7 +1093,7 @@ void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInf
     vkCmdBeginRenderingKHR(cmdBuffer, renderingInfo);
 }
 
-void gfx_command_end_rendering(VkCommandBuffer cmdBuffer) {
+void gfx_command_buffer_end_rendering(VkCommandBuffer cmdBuffer) {
     //TODO: Resolve this to KAH engine specific FP
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
         vkCmdEndRendering(cmdBuffer);
@@ -1065,7 +1109,7 @@ static VkResult gfx_queue_submit_2(VkQueue queue, uint32_t submitCount, const Vk
     return vkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
 }
 
-void gfx_command_insert_memory_barrier(
+void gfx_command_buffer_insert_memory_barrier(
         VkCommandBuffer cmdBuffer,
         const VkImage *image,
         const VkAccessFlags srcAccessMask,
@@ -1324,6 +1368,12 @@ VkSurfaceFormatKHR gfx_vulkan_utils_select_surface_format() {
     }
     return selectedSurfaceFormat;
 }
+
+VkPhysicalDeviceMemoryProperties gfx_get_device_memory_properties()
+{
+    core_assert(s_gfx.deviceMemoryProperties.memoryTypeCount != 0 && s_gfx.deviceMemoryProperties.memoryHeapCount != 0);
+    return s_gfx.deviceMemoryProperties;
+}
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================
@@ -1354,10 +1404,13 @@ void gfx_create(void* windowHandle){
     gfx_imgui_create(windowHandle);
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_lit_create();
+    gfx_texture_builtin_create();
 }
 
 void gfx_cleanup(){
     gfx_flush();
+
+    gfx_texture_builtin_cleanup();
     gfx_lit_cleanup();
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_imgui_cleanup();

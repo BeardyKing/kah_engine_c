@@ -3,6 +3,8 @@
 
 //===INCLUDES==================================================================
 #include <stdint.h>
+
+#include <kah_core/allocators.h>
 //=============================================================================
 
 //===DEFINES===================================================================
@@ -32,7 +34,7 @@ struct CoreRawImage{
     uint32_t depth;
     size_t dataSize;
     size_t mipDataSizes[CORE_RAW_IMAGE_MIP_MAX];
-    unsigned char *data;
+    AllocInfo* imageData;
 }typedef CoreRawImage;
 //=============================================================================
 

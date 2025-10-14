@@ -14,12 +14,16 @@ void gfx_flush();
 uint32_t gfx_buffer_index();
 uint32_t gfx_swap_chain_index();
 uint32_t gfx_last_swap_chain_index();
+VkPhysicalDeviceMemoryProperties gfx_get_device_memory_properties();
 //=============================================================================
 
 //===COMMAND_BUFFER============================================================
-void gfx_command_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo);
-void gfx_command_end_rendering(VkCommandBuffer cmdBuffer);
-void gfx_command_insert_memory_barrier( VkCommandBuffer cmdBuffer, const VkImage *image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkImageSubresourceRange subresourceRange);
+void gfx_command_buffer_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo);
+void gfx_command_buffer_end_rendering(VkCommandBuffer cmdBuffer);
+void gfx_command_buffer_insert_memory_barrier(VkCommandBuffer cmdBuffer, const VkImage *image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkImageSubresourceRange subresourceRange);
+
+VkCommandBuffer gfx_command_buffer_start_immediate_recording();
+void gfx_command_buffer_end_immediate_recording(VkCommandBuffer cmdBuffer);
 //=============================================================================
 
 //===RENDER_TASKS==============================================================

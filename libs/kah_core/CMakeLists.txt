@@ -51,8 +51,10 @@ set_target_properties(kah_core PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED YES 
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_definitions(kah_core PUBLIC KAH_DEBUG=1)
+    target_compile_definitions(kah_core PUBLIC KAH_RELEASE=0)
     target_compile_definitions(kah_core PUBLIC _DEBUG=1)
 else ()
+    target_compile_definitions(kah_core PUBLIC KAH_DEBUG=0)
     target_compile_definitions(kah_core PUBLIC KAH_RELEASE=1)
     target_compile_definitions(kah_core PUBLIC NDEBUG=1)
 endif ()

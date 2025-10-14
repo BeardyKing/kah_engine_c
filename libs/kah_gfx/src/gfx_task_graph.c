@@ -229,7 +229,7 @@ static void gfx_task_graph_build_and_run_barriers(VkCommandBuffer cmdBuffer, con
             task_graph_log("tg: Barrier before: \noldLayout = \t%s \nsrcAccessMask = %s \nsrcStageMask = \t%s\n", VkImageLayout_c_str(info->lastLayout), VkAccessFlagBits_c_str(info->lastAccess) , VkPipelineStageFlags_c_str(info->lastStage));
             task_graph_log("tg: Barrier after : \nnewLayout = \t%s \ndstAccessMask = %s \ndstStageMask = \t%s\n\n", VkImageLayout_c_str(ctx->layout), VkAccessFlagBits_c_str(ctx->acess) , VkPipelineStageFlags_c_str(ctx->stage));
 
-            gfx_command_insert_memory_barrier(
+            gfx_command_buffer_insert_memory_barrier(
                 cmdBuffer,
                 &gfxImage.image,
                 info->lastAccess,
@@ -352,11 +352,11 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
         .pStencilAttachment = depthStencilAttachmentInUse ? &depthStencilAttachment : nullptr,
     };
 
-    gfx_command_begin_rendering(cmdBuffer, &renderingInfo);
+    gfx_command_buffer_begin_rendering(cmdBuffer, &renderingInfo);
     {
         rp->dispatch(cmdBuffer, renderCtx);
     }
-    gfx_command_end_rendering(cmdBuffer);
+    gfx_command_buffer_end_rendering(cmdBuffer);
 }
 //=============================================================================
 

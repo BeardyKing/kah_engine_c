@@ -29,6 +29,8 @@ add_library(kah_gfx
         src/gfx_converter.c
         inc/kah_gfx/vulkan/gfx_vulkan_bindless.h
         src/vulkan/gfx_vulkan_bindless.c
+        inc/kah_gfx/vulkan/gfx_vulkan_texture.h
+        src/vulkan/gfx_vulkan_texture.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
@@ -73,8 +75,10 @@ set_target_properties(kah_gfx PROPERTIES C_STANDARD 23 C_STANDARD_REQUIRED YES C
 target_compile_definitions(kah_gfx PRIVATE VK_NO_PROTOTYPES)
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     target_compile_definitions(kah_gfx PUBLIC KAH_DEBUG=1)
+    target_compile_definitions(kah_gfx PUBLIC KAH_RELEASE=0)
     target_compile_definitions(kah_gfx PUBLIC _DEBUG=1)
 else ()
+    target_compile_definitions(kah_gfx PUBLIC KAH_DEBUG=0)
     target_compile_definitions(kah_gfx PUBLIC KAH_RELEASE=1)
     target_compile_definitions(kah_gfx PUBLIC NDEBUG=1)
 endif ()

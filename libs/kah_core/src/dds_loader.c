@@ -375,13 +375,13 @@ static void get_image_info( uint32_t width, uint32_t height, TextureFormatDXGI t
     }
 
     if (bc) {
-        int64_t numBlocksWide = 0;
+        uint32_t numBlocksWide = 0;
         if (width > 0) {
-            numBlocksWide = max_i64(1, (width + 3) / 4);
+            numBlocksWide = max_u32(1, (width + 3) / 4);
         }
-        int64_t numBlocksHigh = 0;
+        uint32_t numBlocksHigh = 0;
         if (height > 0) {
-            numBlocksHigh = max_i64(1, (height + 3) / 4);
+            numBlocksHigh = max_u32(1, (height + 3) / 4);
         }
         rowBytes = numBlocksWide * bcnumBytesPerBlock;
         numRows = numBlocksHigh;
@@ -389,7 +389,7 @@ static void get_image_info( uint32_t width, uint32_t height, TextureFormatDXGI t
         rowBytes = ((width + 1) >> 1) * 4;
         numRows = height;
     } else {
-        int64_t bpp = bits_per_pixel(textureFormat);
+        uint32_t bpp = bits_per_pixel(textureFormat);
         rowBytes = (width * bpp + 7) / 8; // Round up to the nearest byte.
         numRows = height;
     }
@@ -429,7 +429,7 @@ void load_dds_image_alloc(Allocator allocator, const char *path, CoreRawImage *o
     size_t remainingSize = fileSize - 4;
     AllocInfo* fileAlloc = allocator.alloc(remainingSize);
     char *rawFileData = (char *)fileAlloc->bufferAddress;
-    if (read(fd, rawFileData, remainingSize) != (ssize_t)remainingSize) {
+    if (read(fd, rawFileData, (uint32_t)remainingSize) != (ssize_t)remainingSize) {
         printf("err: failed to read DDS file contents: %s\n", path);
         close(fd);
         return;
@@ -454,7 +454,7 @@ void load_dds_image_alloc(Allocator allocator, const char *path, CoreRawImage *o
     uint32_t outRowBytes = 0;
     uint32_t outNumRows = 0;
     size_t sumOfMipData = 0;
-    for (int i = 0; i < mipCount; ++i) {
+    for (uint32_t i = 0; i < mipCount; ++i) {
         if (constexpr_make_four_cc('D', 'X', '1', '0') == header->ddspf.dwFourCC) {
             format = (TextureFormatDXGI) d3d10ext->dxgiFormat;
             get_image_info(width >> i, height >> i, format, &outNumBytes, &outRowBytes, &outNumRows);

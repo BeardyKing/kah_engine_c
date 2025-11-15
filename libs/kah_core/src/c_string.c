@@ -6,7 +6,7 @@ char *c_str_n_search_reverse(char *src, const int32_t srcLen, const char *subStr
     const int32_t itrStart = srcLen - subStrLen;
 
     for (int32_t i = itrStart; i >= 0; i--) {
-        if (c_str_n_equal(&src[i], subStr, subStrLen)) {
+        if (c_str_n_equal(&src[i], subStr, (size_t)subStrLen)) {
             return &src[i];
         }
     }

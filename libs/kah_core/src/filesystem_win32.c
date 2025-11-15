@@ -26,7 +26,7 @@ bool fs_file_exists(const char *path) {
 size_t fs_file_size(const char *path) {
     struct stat buffer = (struct stat){};
     stat(path, &buffer);
-    return buffer.st_size;
+    return (size_t)buffer.st_size;
 }
 
 bool fs_mkdir_recursive_internal(const char path[KAH_FILESYSTEM_MAX_PATH]) {
@@ -47,7 +47,7 @@ bool fs_mkdir_recursive_internal(const char path[KAH_FILESYSTEM_MAX_PATH]) {
 
 //Note: This function can either take in a file path or a directory path
 //      When using a directory path you MUST include a trailing '/'
-bool fs_mkdir_recursive(const char path[KAH_FILESYSTEM_MAX_PATH]) {
+bool fs_mkdir_recursive(const char* path) {
     if (c_str_empty(path)) {
         return false;
     }

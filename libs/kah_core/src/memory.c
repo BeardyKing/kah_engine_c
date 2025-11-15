@@ -52,7 +52,7 @@ void* malloc_zeroed(size_t size){
 uint32_t alloc_info_get_next_free_index(){
     const size_t bitIndex = bitarray_find_first_unset_bit(&s_allocationTable.infoInUse.header);
     core_assert_msg(bitIndex != UINT64_MAX, "err: alloc info has no free slots");
-    return bitIndex != UINT64_MAX ? bitIndex : ALLOC_TABLE_INVALID_INDEX;
+    return bitIndex != UINT64_MAX ? (uint32_t)bitIndex : ALLOC_TABLE_INVALID_INDEX;
 }
 
 uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
@@ -272,7 +272,7 @@ void mem_arena_realloc(AllocInfo* allocInfo, size_t inBufferSize){
     core_assert(s_arenaData->infoIndex != 0);
 
     if(allocInfo->bufferAddress == s_arenaData->infos[s_arenaData->infoIndex - 1].bufferAddress){
-        int64_t bufferChangeAmount = inBufferSize - allocInfo->commitedMemory; //may be -ve
+        size_t bufferChangeAmount = inBufferSize - allocInfo->commitedMemory; //may be -ve
         allocInfo->commitedMemory = inBufferSize;
         allocInfo->reservedMemory = inBufferSize;
         s_arenaData->current += bufferChangeAmount;

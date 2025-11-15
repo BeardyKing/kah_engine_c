@@ -183,7 +183,7 @@ void input_create() {
     s_input = (Input){};
 
     //TODO READ FROM FILE
-    input_set_mouse_sensitivity((vec2f){0.15f, 0.15f});
+    input_set_mouse_sensitivity((vec2f){{0.15f, 0.15f}});
     input_set_scroll_sensitivity(0.03f);
 }
 

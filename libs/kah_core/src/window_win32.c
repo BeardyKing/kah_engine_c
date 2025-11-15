@@ -243,8 +243,8 @@ bool window_is_cursor_over_window() {
 
 void window_set_cursor_lock_position(const vec2i lockPos) {
     s_windowInfo.lockedCursorPosition = (vec2i){
-            s_windowInfo.posX + lockPos.x,
-            s_windowInfo.posY + lockPos.y
+            .x = s_windowInfo.posX + lockPos.x,
+            .y = s_windowInfo.posY + lockPos.y
     };
 }
 
@@ -295,10 +295,11 @@ void window_set_procedure_callback_func(void *procCallback) {
 
 //===INIT_&_SHUTDOWN===========================================================
 static wchar_t s_wc_windowTitle[KAH_MAX_WINDOW_TITLE_SIZE];
-void window_create(const char windowTitle[KAH_MAX_WINDOW_TITLE_SIZE], const vec2i windowSize, const vec2i windowPosition) {
+void window_create(const char* windowTitle, const vec2i windowSize, const vec2i windowPosition) {
+    core_assert(strlen(windowTitle) < KAH_MAX_WINDOW_TITLE_SIZE);
     int32_t screenX = windowPosition.x;
     int32_t screenY = windowPosition.y;
-    if (windowPosition.x == UINT32_MAX || windowPosition.y == UINT32_MAX) {
+    if (windowPosition.x == (int32_t)0xffffffff || windowPosition.y == (int32_t)0xffffffff) {
         screenX = GetSystemMetrics(SM_CXSCREEN) / 2 - (windowSize.x / 2);
         screenY = GetSystemMetrics(SM_CYSCREEN) / 2 - (windowSize.y / 2);
     }
@@ -330,8 +331,8 @@ void window_create(const char windowTitle[KAH_MAX_WINDOW_TITLE_SIZE], const vec2
             .posY = screenY,
             .shouldWindowClose = false,
             .currentCursorState = CURSOR_NORMAL,
-            .lockedCursorPosition = (vec2i){0,0},
-            .virtualCursorPosition = (vec2i){0,0},
+            .lockedCursorPosition = (vec2i){},
+            .virtualCursorPosition = (vec2i){},
             .cursorOverWindow = false
         };
 

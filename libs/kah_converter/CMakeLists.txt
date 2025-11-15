@@ -26,3 +26,30 @@ else ()
     target_compile_definitions(kah_converter PUBLIC KAH_RELEASE=1)
     target_compile_definitions(kah_converter PUBLIC NDEBUG=1)
 endif ()
+
+target_compile_options(kah_converter PRIVATE
+#===SUPPORTED TARGETS==========================================================
+    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<PLATFORM_ID:MinGW>>:
+#==============================================================================
+#===DISABLE====================================================================
+    -Wno-old-style-declaration
+#==============================================================================
+#===ENABLE=====================================================================
+    -Werror
+    -Wall
+    -Wextra
+    -Wunused-variable
+    -Wreturn-type
+    -Wconversion
+    -Wsign-conversion
+    -Wfloat-conversion
+    -Wnarrowing
+    -Wreturn-local-addr
+    -Wuninitialized
+    -Wshadow
+    -Wpointer-arith
+    -Wint-to-pointer-cast
+    -Wbad-function-cast
+#==============================================================================
+    >
+)

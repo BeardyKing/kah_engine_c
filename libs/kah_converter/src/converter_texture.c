@@ -30,7 +30,7 @@ const char* texture_format_to_string(const CoreTextureFormat textureFormat) {
 constexpr char CONVERTER_MAX_MIP_COUNT[] = "-miplevels 20";
 constexpr char CONVERTER_ENCODE_TYPE[] = "-EncodeWith GPU";
 constexpr char CONVERTER_THREAD_COUNT[] = "-EncodeWith GPU";
-constexpr char CONVERTER_2X2_MIPS[] = "-mipsize 2";
+[[maybe_unused]] constexpr char CONVERTER_2X2_MIPS[] = "-mipsize 2";
 constexpr char CONVERTER_4X4_MIPS[] = "-mipsize 4";
 
 //===API================================================================================================================

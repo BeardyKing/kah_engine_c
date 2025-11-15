@@ -40,7 +40,7 @@ void bitarray_print(BitArrayHeader* header) {
         size_t bitStrIndex = 0;
 
         for (int32_t bit = (KAH_BIT_ARRAY_ALIGNMENT - 1 ); bit >= 0; --bit) {
-            size_t bitIndex = (wordIndex * KAH_BIT_ARRAY_ALIGNMENT) + bit;
+            size_t bitIndex = (wordIndex * KAH_BIT_ARRAY_ALIGNMENT) + (size_t)bit;
             if (bitIndex >= bitCount) {
                 bitStr[bitStrIndex++] = '?';
             } else {
@@ -121,7 +121,7 @@ size_t bitarray_count_set_bits(BitArrayHeader* header) {
             }
         }
 
-        count += u64_count_set_bits(word);
+        count += (size_t)u64_count_set_bits(word);
     }
 
     return count;
@@ -211,7 +211,7 @@ size_t bitarray_count_trailing_zeros(BitArrayHeader* header) {
 
     for (size_t i = 0; i < wordCount; ++i) {
         if (buf[i] != 0) {
-            return (i * KAH_BIT_ARRAY_ALIGNMENT) + u64_count_trailing_zeros(buf[i]);
+            return (i * KAH_BIT_ARRAY_ALIGNMENT) + (uint32_t)u64_count_trailing_zeros(buf[i]);
         }
     }
 
@@ -235,11 +235,11 @@ size_t bitarray_count_leading_zeros(BitArrayHeader* header) {
             if (i == wordCount - 1) {
                 // mask end bits in word if count doesn't perfectly match word bit count
                 uint64_t mask = (lastWordBits == KAH_BIT_ARRAY_ALIGNMENT) ? UINT64_MAX : ((1ULL << lastWordBits) - 1);
-                return (wordCount - 1 - i) * KAH_BIT_ARRAY_ALIGNMENT + u64_count_leading_zeros(buf[i] & mask) - (KAH_BIT_ARRAY_ALIGNMENT - lastWordBits);
+                return (wordCount - 1 - i) * KAH_BIT_ARRAY_ALIGNMENT + (uint32_t)u64_count_leading_zeros(buf[i] & mask) - (KAH_BIT_ARRAY_ALIGNMENT - lastWordBits);
             }
             else
                 {
-                return (wordCount - 1 - i) * KAH_BIT_ARRAY_ALIGNMENT + u64_count_leading_zeros(buf[i]);
+                return (wordCount - 1 - i) * KAH_BIT_ARRAY_ALIGNMENT + (uint32_t)u64_count_leading_zeros(buf[i]);
             }
         }
     }
@@ -256,7 +256,7 @@ size_t bitarray_find_first_unset_bit(BitArrayHeader* header) {
     for (size_t i = 0; i < wordCount; ++i) {
         if (buf[i] != UINT64_MAX) {
             uint64_t inverted = ~buf[i];
-            size_t bitOffset = u64_count_trailing_zeros(inverted);
+            size_t bitOffset = (size_t)u64_count_trailing_zeros(inverted);
             size_t bitIndex = (i * KAH_BIT_ARRAY_ALIGNMENT) + bitOffset;
 
             if (bitIndex < totalBits) {

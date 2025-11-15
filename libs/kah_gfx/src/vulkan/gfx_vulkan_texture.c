@@ -2,8 +2,8 @@
 #include <kah_gfx/vulkan/gfx_vulkan_utils.h>
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
+#include <kah_gfx/vulkan/gfx_vulkan_buffer.h>
 #include <kah_gfx/gfx_converter.h>
-#include <vulkan/vulkan_core.h>
 
 #include <kah_core/texture_formats.h>
 #include <kah_core/dds_loader.h>
@@ -17,49 +17,6 @@
 //===INTERNAL_STRUCTS===================================================================================================
 extern GlobalGfx g_gfx;
 //======================================================================================================================
-
-struct GfxBuffer {
-    VkBuffer buffer;
-    VmaAllocation allocation;
-    VmaAllocationInfo info;
-
-    bool usingBufferDeviceAddress;
-    VkDeviceAddress address;
-} typedef GfxBuffer;
-
-GfxBuffer gfx_buffer_create(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) {
-    const VkBufferCreateInfo bufferInfo = (VkBufferCreateInfo){
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = allocSize,
-        .usage = usage,
-    };
-
-    const VmaAllocationCreateInfo allocInfo = (VmaAllocationCreateInfo){
-        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-        .usage = memoryUsage,
-    };
-
-    GfxBuffer buffer = (GfxBuffer){};
-    VkResult bufferRes = vmaCreateBuffer( g_gfx.allocator, &bufferInfo, &allocInfo, &buffer.buffer, &buffer.allocation, &buffer.info);
-    core_assert(bufferRes == VK_SUCCESS);
-
-    if ((usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) != 0) {
-        const VkBufferDeviceAddressInfo deviceAdressInfo = (VkBufferDeviceAddressInfo){
-            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .buffer = buffer.buffer,
-        };
-        buffer.address = vkGetBufferDeviceAddress(g_gfx.device, &deviceAdressInfo);
-        buffer.usingBufferDeviceAddress = true;
-    }
-
-    return buffer;
-}
-
-void gfx_buffer_cleanup(GfxBuffer* inBuffer){
-    core_assert(inBuffer);
-    vmaDestroyBuffer(g_gfx.allocator, inBuffer->buffer, inBuffer->allocation);
-    *inBuffer = (GfxBuffer){};
-}
 
 static void set_image_layout(
         VkCommandBuffer cmdbuffer,
@@ -302,7 +259,7 @@ GfxTexture* gfx_texture_load_from_file( const char* path ){
     AllocInfo* bufferCopyRegionsAlloc = mem_cstd_alloc(outTexture->mipLevels * sizeof(VkBufferImageCopy));
     {
         VkBufferImageCopy *bufferCopyRegions = (VkBufferImageCopy *) bufferCopyRegionsAlloc->bufferAddress;
-        uint32_t offset = 0;
+        size_t offset = 0;
         for (uint32_t i = 0; i < outTexture->mipLevels; i++) {
             // set up a buffer image copy structure for the current mip level
             bufferCopyRegions[i] = (VkBufferImageCopy){

@@ -31,7 +31,7 @@ static size_t pool_acquire_next_free_index(Pool* pool){
     return outIndex;
 }
 
-static void pool_release_index(Pool* pool, size_t index){
+static void pool_release_index(Pool* pool, uint32_t index){
     GfxImage* image = fixed_array_get(&pool->buffer, index);
     core_assert(image->image == VK_NULL_HANDLE);
     core_assert(image->view == VK_NULL_HANDLE);
@@ -49,7 +49,7 @@ static struct GfxPool{
 
 //===API=======================================================================
 GfxImageHandle gfx_pool_get_gfx_image_handle(){
-    GfxImageHandle outHandle = pool_acquire_next_free_index(&s_pool.gfxImages);
+    GfxImageHandle outHandle = (GfxImageHandle)pool_acquire_next_free_index(&s_pool.gfxImages);
     core_assert(outHandle < GFX_POOL_GFX_IMAGE_COUNT_MAX);
     return outHandle;
 }

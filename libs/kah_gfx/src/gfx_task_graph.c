@@ -15,7 +15,7 @@
 
 //===LOCAL_STRUCTS=============================================================
 constexpr size_t TG_RENDER_PASS_MAX = 128;
-constexpr size_t TG_ATTACHMENTS_MAX = 128;
+[[maybe_unused]] constexpr size_t TG_ATTACHMENTS_MAX = 128;
 constexpr size_t TG_RENDER_PASS_NAME_MAX = 64;
 constexpr size_t TG_RENDER_PASS_ATTACHMENT_MAX = 8;
 constexpr char TG_ARENA_STRING_FALLBACK[TG_RENDER_PASS_NAME_MAX] = "err: no tg string memory remaining";
@@ -124,7 +124,7 @@ static const char* task_graph_arena_string(TaskGraphArena* inArena, const char* 
         core_assert(inStrLen < TG_RENDER_PASS_NAME_MAX);
         char* outStr = &((char*)inArena->alloc->bufferAddress)[s_tgRenderPassArena.count];
         inArena->count += inStrLen;
-        sprintf(outStr, "%s\0", inStr);
+        sprintf(outStr, "%s\n", inStr);
         return outStr;
     }
     return TG_ARENA_STRING_FALLBACK;

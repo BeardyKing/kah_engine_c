@@ -12,7 +12,7 @@
 //===API=======================================================================
 void gfx_surface_create(void* windowHandle, const VkInstance* instance, VkSurfaceKHR* outSurface)
 {
-    VkWin32SurfaceCreateInfoKHR surfaceInfo = {VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
+    VkWin32SurfaceCreateInfoKHR surfaceInfo = {.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR};
 
     core_assert_msg(windowHandle != nullptr, "Err: invalid window handle");
     surfaceInfo.hinstance = GetModuleHandle(nullptr);

@@ -31,6 +31,10 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan_bindless.c
         inc/kah_gfx/vulkan/gfx_vulkan_texture.h
         src/vulkan/gfx_vulkan_texture.c
+        inc/kah_gfx/vulkan/gfx_vulkan_mesh.h
+        src/vulkan/gfx_vulkan_mesh.c
+        inc/kah_gfx/vulkan/gfx_vulkan_buffer.h
+        src/vulkan/gfx_vulkan_buffer.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
@@ -82,3 +86,30 @@ else ()
     target_compile_definitions(kah_gfx PUBLIC KAH_RELEASE=1)
     target_compile_definitions(kah_gfx PUBLIC NDEBUG=1)
 endif ()
+
+target_compile_options(kah_gfx PRIVATE
+#===SUPPORTED TARGETS==========================================================
+    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<PLATFORM_ID:MinGW>>:
+#==============================================================================
+#===DISABLE====================================================================
+        -Wno-old-style-declaration
+#==============================================================================
+#===ENABLE=====================================================================
+        -Werror
+        -Wall
+        -Wextra
+        -Wunused-variable
+        -Wreturn-type
+        -Wconversion
+        -Wsign-conversion
+        -Wfloat-conversion
+        -Wnarrowing
+        -Wreturn-local-addr
+        -Wuninitialized
+        -Wshadow
+        -Wpointer-arith
+        -Wint-to-pointer-cast
+        -Wbad-function-cast
+#==============================================================================
+    >
+)

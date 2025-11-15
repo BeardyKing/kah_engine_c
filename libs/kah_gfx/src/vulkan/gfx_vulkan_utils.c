@@ -59,7 +59,7 @@ const char* VkImageLayout_c_str( const VkImageLayout imageLayout ){
 }
 
 const char* VkAccessFlagBits_c_str( const VkAccessFlagBits accessFlagBits ){
-    switch (accessFlagBits){
+    switch ((uint32_t)accessFlagBits){
         case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:                       return "VK_ACCESS_INDIRECT_COMMAND_READ_BIT";
         case VK_ACCESS_INDEX_READ_BIT:                                  return "VK_ACCESS_INDEX_READ_BIT";
         case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:                       return "VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT";

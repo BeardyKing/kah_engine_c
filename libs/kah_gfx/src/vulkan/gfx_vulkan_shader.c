@@ -23,10 +23,10 @@ VkShaderModule gfx_shader_load_binary(const char *path){
     const int statResult = fstat(fd, &st);
     core_assert_msg( statResult == 0, "err: fstat failed");
 
-    const size_t size = st.st_size;
+    const uint32_t size = (uint32_t)st.st_size;
     core_assert(size > 0);
 
-    AllocInfo* alloc = allocators()->arena.alloc(size);
+    AllocInfo* alloc = allocators()->arena.alloc((uint32_t)size);
 
     char *shaderCode = (char *)alloc->bufferAddress;
     const ssize_t bytesRead = read(fd, shaderCode, size);

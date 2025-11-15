@@ -13,6 +13,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_lit.h>
 #include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
 #include <kah_gfx/vulkan/gfx_vulkan_texture.h>
+#include <kah_gfx/vulkan/gfx_vulkan_mesh.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -24,7 +25,6 @@
 #include <kah_math/vec2.h>
 
 #include <stdio.h>
-
 //=============================================================================
 
 //===INTERNAL_CONSTANTS/DEFINES================================================
@@ -57,12 +57,6 @@ struct GfxSemaphores {
     VkSemaphore presentDone;
     VkSemaphore renderDone;
 }typedef GfxSemaphores;
-
-struct GfxBuffer {
-    VkBuffer buffer;
-    VkBufferView view;
-    VmaAllocation alloc;
-} typedef GfxBuffer;
 
 struct GfxSwapChain {
     VkSurfaceKHR surface;
@@ -255,7 +249,7 @@ static uint32_t gfx_find_supported_instance_extension_index(const char* extensio
 }
 
 
-static uint32_t gfx_find_supported_device_extension_index(const char* extensionName){
+[[maybe_unused]] static uint32_t gfx_find_supported_device_extension_index(const char* extensionName){
     for (uint32_t i = 0; i < s_gfx.supportedDeviceExtensions.count; ++i) {
         const VkExtensionProperties* supportedExtension = dynamic_array_buffer(&s_gfx.supportedDeviceExtensions);
         if ( c_str_equal(supportedExtension[i].extensionName, extensionName)) {
@@ -485,7 +479,7 @@ static void debug_print_selected_physical_device_info(){
     gfx_log_info("Name:\t\t%s \nType:\t\t%s \nMemory:\t\t%.2f MiB \nHeap Count:\t%u \nVersion:\t%u.%u.%u \nDriver: \t%u.%u.%u\n",
              s_gfx.deviceProperties.deviceName,
              deviceType,
-             totalDeviceLocalMem / (float)KAH_MiB,
+             (float)totalDeviceLocalMem / (float)KAH_MiB,
              s_gfx.deviceMemoryProperties.memoryHeapCount,
              apiVersionMajor,
              apiVersionMinor,
@@ -497,7 +491,7 @@ static void debug_print_selected_physical_device_info(){
 }
 
 static VkSampleCountFlagBits set_target_sample_count(const VkPhysicalDeviceProperties deviceProperties, VkSampleCountFlagBits target) {
-    VkSampleCountFlags supportedSampleCount = min_i32(deviceProperties.limits.framebufferColorSampleCounts, deviceProperties.limits.framebufferDepthSampleCounts);
+    VkSampleCountFlags supportedSampleCount = min_u32(deviceProperties.limits.framebufferColorSampleCounts, deviceProperties.limits.framebufferDepthSampleCounts);
     return (supportedSampleCount & target) ? target : VK_SAMPLE_COUNT_1_BIT;
 }
 
@@ -715,7 +709,7 @@ static void gfx_command_pool_cleanup(){
 
 static void gfx_semaphores_create(){
     for (uint32_t i = 0; i < KAH_SWAP_CHAIN_IMAGE_COUNT; ++i) {
-        VkSemaphoreCreateInfo semaphoreInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+        VkSemaphoreCreateInfo semaphoreInfo = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
         const VkResult presentRes = vkCreateSemaphore(g_gfx.device, &semaphoreInfo, g_gfx.allocationCallbacks, &s_gfx.semaphores[i].presentDone);
         const VkResult renderRes = vkCreateSemaphore(g_gfx.device, &semaphoreInfo, g_gfx.allocationCallbacks, &s_gfx.semaphores[i].renderDone);
         core_assert_msg(presentRes == VK_SUCCESS, "err: failed to create present semaphore");
@@ -943,7 +937,6 @@ static void gfx_fences_cleanup() {
     }
 }
 
-
 static void gfx_pipeline_cache_create(){
     VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
     pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -951,7 +944,15 @@ static void gfx_pipeline_cache_create(){
     core_assert_msg(cacheRes == VK_SUCCESS, "err: Failed to create pipeline cache");
 }
 
+static void gfx_mesh_builtin_create()
+{
+    //TODO: Need to setup gfx mesh pool
+    GfxMesh plane = gfx_mesh_build_plane();
+    gfx_mesh_cleanup(&plane);
+}
+
 static void gfx_texture_builtin_create(){
+    //TODO: Need to setup gfx texture pool
     s_builtIn.blackTexture = gfx_texture_load_from_file("assets/textures/black.dds");
     s_builtIn.whiteTexture = gfx_texture_load_from_file("assets/textures/white.dds");
     s_builtIn.uvGridTexture = gfx_texture_load_from_file("assets/textures/UV_Grid/UV_Grid_test.dds");
@@ -1236,7 +1237,7 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx)
     const VkViewport viewport = {0, 0, (float)writeImage0->size.x, (float)writeImage0->size.y, 0.0f, 1.0f};
     vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
-    const VkRect2D scissor = {0, 0, writeImage0->size.x, writeImage0->size.y};
+    const VkRect2D scissor = {{0, 0}, {writeImage0->size.x, writeImage0->size.y}};
     vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 }
 
@@ -1298,7 +1299,7 @@ void gfx_vulkan_blit_image_to_swapchain_run( VkCommandBuffer cmdBuffer, GfxRende
     );
 }
 
-void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
+void gfx_vulkan_prepare_present_run(VkCommandBuffer /*cmdBuffer*/, GfxRenderContext ctx){
     //===WRITE=================================================================
     core_assert(ctx.readCount == 1);
     core_assert(ctx.read[0].type == GFX_RESOURCE_IMAGE_EXTERNAL_CB);
@@ -1307,7 +1308,7 @@ void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, GfxRenderContext 
 }
 //===API/GFX_VULKAN_INTERFACE==================================================
 vec2u gfx_vulkan_swapchain_size(){
-    return (vec2u){s_gfx.swapChain.width,s_gfx.swapChain.height};
+    return (vec2u){{s_gfx.swapChain.width,s_gfx.swapChain.height}};
 }
 
 bool gfx_has_drawable_surface(){
@@ -1405,6 +1406,7 @@ void gfx_create(void* windowHandle){
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_lit_create();
     gfx_texture_builtin_create();
+    gfx_mesh_builtin_create();
 }
 
 void gfx_cleanup(){

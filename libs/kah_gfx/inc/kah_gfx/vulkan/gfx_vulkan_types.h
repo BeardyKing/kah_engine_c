@@ -11,8 +11,8 @@
 //=============================================================================
 
 //===GLOBAL_DEFINES============================================================
-constexpr uint32_t KAH_SWAP_CHAIN_IMAGE_COUNT = 3;
-constexpr uint32_t KAH_BUFFER_COUNT = 3;
+constexpr uint32_t KAH_SWAP_CHAIN_IMAGE_COUNT = 2;
+constexpr uint32_t KAH_BUFFER_COUNT = 2;
 //=============================================================================
 
 //===POOL_TYPES================================================================

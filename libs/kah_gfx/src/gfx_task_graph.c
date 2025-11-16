@@ -481,7 +481,6 @@ static void gfx_resources_create(){
         .depthStencil = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_DEPTH_STENCIL, &(GfxAttachmentInfo){.format = VK_FORMAT_UNDEFINED, .sizeType = GFX_SIZE_TYPE_SWAPCHAIN_RELATIVE}, "res_depth", nullptr),
         .external_swapchainImage[0] = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb[0]", gfx_get_current_swapchain_image_data ),
         .external_swapchainImage[1] = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb[1]", gfx_get_current_swapchain_image_data ),
-        .external_swapchainImage[2] = gfx_task_graph_resource_create(GFX_RESOURCE_IMAGE_EXTERNAL_CB, nullptr, "external_swapchain_cb[2]", gfx_get_current_swapchain_image_data ),
     };
 }
 

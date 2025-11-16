@@ -2,35 +2,38 @@
 #include <kah_gfx/vulkan/gfx_vulkan_mesh.h>
 #include <kah_gfx/vulkan/gfx_vulkan_buffer.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
+#include <kah_gfx/gfx_pool.h>
 //=============================================================================
 
 //===API=======================================================================
-GfxMesh gfx_mesh_load_from_memory(CoreRawMesh rawMesh)
+GfxMeshHandle gfx_mesh_load_from_memory(CoreRawMesh rawMesh)
 {
-    GfxMesh outMesh = (GfxMesh){};
+    const GfxMeshHandle outMeshHandle = gfx_pool_get_gfx_mesh_handle();
+    GfxMesh* currentMesh = gfx_pool_get_gfx_mesh(outMeshHandle);
+
     const uint32_t indexBufferSize = rawMesh.indexCount * sizeof(uint32_t);
-    outMesh.indexBuffer = gfx_buffer_create(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_AUTO);
+    currentMesh->indexBuffer = gfx_buffer_create(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_AUTO);
 
     const uint32_t vertexBufferSize = rawMesh.vertexCount * sizeof(CoreVertex);
-    outMesh.vertexBuffer = gfx_buffer_create(vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO);
+    currentMesh->vertexBuffer = gfx_buffer_create(vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VMA_MEMORY_USAGE_AUTO);
 
     GfxBuffer staging = gfx_buffer_create(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO);
     {
         VkCommandBuffer cmdBuffer = gfx_command_buffer_start_immediate_recording();
         {
             const VkBufferCopy vertexCopy = (VkBufferCopy){ .srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize,};
-            vkCmdCopyBuffer(cmdBuffer, staging.buffer, outMesh.vertexBuffer.buffer, 1, &vertexCopy);
+            vkCmdCopyBuffer(cmdBuffer, staging.buffer, currentMesh->vertexBuffer.buffer, 1, &vertexCopy);
 
             const VkBufferCopy indexCopy = (VkBufferCopy){ .srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
-            vkCmdCopyBuffer(cmdBuffer, staging.buffer, outMesh.indexBuffer.buffer, 1, &indexCopy);
+            vkCmdCopyBuffer(cmdBuffer, staging.buffer, currentMesh->indexBuffer.buffer, 1, &indexCopy);
         }
         gfx_command_buffer_end_immediate_recording(cmdBuffer);
     }
     gfx_buffer_cleanup(&staging);
-    return outMesh;
+    return outMeshHandle;
 }
 
-GfxMesh gfx_mesh_build_plane()
+GfxMeshHandle gfx_mesh_build_quad()
 {
     CoreVertex v0 = {.pos = {{-0.5f, -0.5f, 0.0f}}, .normal = {}, .uv = {}, .color = {{1.0f, 0.0f, 0.0f}}};
     CoreVertex v1 = {.pos = {{0.5f, -0.5f, 0.0f}}, .normal = {}, .uv = {}, .color = {{0.0f, 1.0f, 0.0f}}};
@@ -55,9 +58,13 @@ GfxMesh gfx_mesh_build_plane()
     return gfx_mesh_load_from_memory(rawMesh);
 }
 
-void gfx_mesh_cleanup(GfxMesh* inMesh){
-    gfx_buffer_cleanup(&inMesh->vertexBuffer);
-    gfx_buffer_cleanup(&inMesh->indexBuffer);
-    *inMesh = (GfxMesh){};
+void gfx_mesh_cleanup(GfxMeshHandle handle){
+    GfxMesh* currentMesh = gfx_pool_get_gfx_mesh(handle);
+    {
+        gfx_buffer_cleanup(&currentMesh->vertexBuffer);
+        gfx_buffer_cleanup(&currentMesh->indexBuffer);
+        *currentMesh = (GfxMesh){};
+    }
+    gfx_pool_release_gfx_mesh(handle);
 }
 //=============================================================================

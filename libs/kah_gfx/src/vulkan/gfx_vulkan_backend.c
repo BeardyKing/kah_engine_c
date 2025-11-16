@@ -111,10 +111,16 @@ static struct GfxUserArguments {
     VkSampleCountFlagBits msaa;
 } s_userArguments = {};
 
-static struct BuiltInTextures{
-    GfxTexture* blackTexture;
-    GfxTexture* whiteTexture;
-    GfxTexture* uvGridTexture;
+static struct BuiltIns{
+    struct{
+        GfxTextureHandle black;
+        GfxTextureHandle white;
+        GfxTextureHandle uvGrid;
+    }textures;
+
+    struct{
+        GfxMeshHandle quad;
+    }meshes;
 } s_builtIn;
 
 static struct GfxFeatures{
@@ -944,32 +950,37 @@ static void gfx_pipeline_cache_create(){
     core_assert_msg(cacheRes == VK_SUCCESS, "err: Failed to create pipeline cache");
 }
 
-static void gfx_mesh_builtin_create()
-{
-    //TODO: Need to setup gfx mesh pool
-    GfxMesh plane = gfx_mesh_build_plane();
-    gfx_mesh_cleanup(&plane);
+static void gfx_mesh_builtin_create(){
+    s_builtIn.meshes.quad = gfx_mesh_build_quad();
+}
+
+static void gfx_mesh_builtin_cleanup(){
+    gfx_mesh_cleanup(s_builtIn.meshes.quad);
 }
 
 static void gfx_texture_builtin_create(){
-    //TODO: Need to setup gfx texture pool
-    s_builtIn.blackTexture = gfx_texture_load_from_file("assets/textures/black.dds");
-    s_builtIn.whiteTexture = gfx_texture_load_from_file("assets/textures/white.dds");
-    s_builtIn.uvGridTexture = gfx_texture_load_from_file("assets/textures/UV_Grid/UV_Grid_test.dds");
+    //TODO: Add wrapper bindless function to GfxTexture.
+    s_builtIn.textures.black = gfx_texture_load_from_file("assets/textures/black.dds");
+    s_builtIn.textures.white = gfx_texture_load_from_file("assets/textures/white.dds");
+    s_builtIn.textures.uvGrid = gfx_texture_load_from_file("assets/textures/UV_Grid/UV_Grid_test.dds");
 
-    s_builtIn.blackTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_BLACK;
-    s_builtIn.whiteTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_WHITE;
-    s_builtIn.uvGridTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV;
+    GfxTexture* blackTexture = gfx_pool_get_gfx_texture(s_builtIn.textures.black);
+    GfxTexture* whiteTexture = gfx_pool_get_gfx_texture(s_builtIn.textures.white);
+    GfxTexture* uvGridTexture = gfx_pool_get_gfx_texture(s_builtIn.textures.uvGrid);
 
-    gfx_bindless_set_image(s_builtIn.blackTexture->bindlessIndex, s_builtIn.blackTexture->imageView);
-    gfx_bindless_set_image(s_builtIn.whiteTexture->bindlessIndex, s_builtIn.whiteTexture->imageView);
-    gfx_bindless_set_image(s_builtIn.uvGridTexture->bindlessIndex, s_builtIn.uvGridTexture->imageView);
+    blackTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_BLACK;
+    whiteTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_WHITE;
+    uvGridTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV;
+
+    gfx_bindless_set_image(blackTexture->bindlessIndex, blackTexture->imageView);
+    gfx_bindless_set_image(whiteTexture->bindlessIndex, whiteTexture->imageView);
+    gfx_bindless_set_image(uvGridTexture->bindlessIndex, uvGridTexture->imageView);
 }
 
 static void gfx_texture_builtin_cleanup(){
-    gfx_texture_cleanup(s_builtIn.blackTexture);
-    gfx_texture_cleanup(s_builtIn.whiteTexture);
-    gfx_texture_cleanup(s_builtIn.uvGridTexture);
+    gfx_texture_cleanup(s_builtIn.textures.black);
+    gfx_texture_cleanup(s_builtIn.textures.white);
+    gfx_texture_cleanup(s_builtIn.textures.uvGrid);
 }
 
 static void gfx_pipeline_cache_cleanup(){
@@ -1412,6 +1423,7 @@ void gfx_create(void* windowHandle){
 void gfx_cleanup(){
     gfx_flush();
 
+    gfx_mesh_builtin_cleanup();
     gfx_texture_builtin_cleanup();
     gfx_lit_cleanup();
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)

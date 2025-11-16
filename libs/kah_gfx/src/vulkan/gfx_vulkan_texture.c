@@ -3,6 +3,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_buffer.h>
+#include <kah_gfx/gfx_pool.h>
 #include <kah_gfx/gfx_converter.h>
 
 #include <kah_core/texture_formats.h>
@@ -14,10 +15,11 @@
 
 #include <string.h>
 
-//===INTERNAL_STRUCTS===================================================================================================
+//===INTERNAL_STRUCTS==========================================================
 extern GlobalGfx g_gfx;
-//======================================================================================================================
+//=============================================================================
 
+//===INTERNAL==================================================================
 static void set_image_layout(
         VkCommandBuffer cmdbuffer,
         VkImage image,
@@ -141,38 +143,22 @@ static void set_image_layout(
             1, &imageMemoryBarrier);
 }
 
-struct CreateImageInfo {
-    VkFormat format;
-    VkImageUsageFlags usage;
-    VkImageCreateFlags flags;
-    VkExtent3D extent;
-    uint32_t numLayers;
-    VkSampleCountFlagBits samples;
-    VkImageTiling tiling;
-    bool mipMap;
-    bool isCubemap;
-}typedef CreateImageInfo;
-
-GfxTexture gfxTexturePool[32];
-uint32_t gfxTexturePoolIndex = 0;
-
-GfxTexture* gfx_image_create( const VkImageCreateInfo createInfo) {
-
+static GfxTextureHandle gfx_texture_create( const VkImageCreateInfo createInfo) {
     const VmaAllocationCreateInfo allocInfo = (VmaAllocationCreateInfo){
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    //TODO: HACK, local pool just to get started.
-    GfxTexture* outImage = &gfxTexturePool[gfxTexturePoolIndex];
-    gfxTexturePoolIndex++;
-    outImage->format = createInfo.format;
-    outImage->usage = createInfo.usage;
-    outImage->extent = createInfo.extent;
-    outImage->mipLevels = createInfo.mipLevels;
-    outImage->arrayLayers = createInfo.arrayLayers;
+    const GfxTextureHandle outTextureHandle = gfx_pool_get_gfx_texture_handle();
+    GfxTexture* currentTexture = gfx_pool_get_gfx_texture(outTextureHandle);
 
-    const VkResult imageRes = vmaCreateImage(g_gfx.allocator, &createInfo, &allocInfo, &outImage->image, &outImage->allocation, nullptr);
+    currentTexture->format = createInfo.format;
+    currentTexture->usage = createInfo.usage;
+    currentTexture->extent = createInfo.extent;
+    currentTexture->mipLevels = createInfo.mipLevels;
+    currentTexture->arrayLayers = createInfo.arrayLayers;
+
+    const VkResult imageRes = vmaCreateImage(g_gfx.allocator, &createInfo, &allocInfo, &currentTexture->image, &currentTexture->allocation, nullptr);
     core_assert(imageRes == VK_SUCCESS);
 
     const bool shouldCreateView = ((createInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT) != 0) || ((createInfo.usage & VK_IMAGE_USAGE_STORAGE_BIT) != 0) ||((createInfo.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0) || ((createInfo.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0);
@@ -187,28 +173,29 @@ GfxTexture* gfx_image_create( const VkImageCreateInfo createInfo) {
 
         const VkImageViewCreateInfo viewCreateInfo = (VkImageViewCreateInfo){
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image = outImage->image,
+            .image = currentTexture->image,
             .viewType = viewType,
             .format = createInfo.format,
             .subresourceRange =
                 (VkImageSubresourceRange){
                     .aspectMask = aspectFlag,
                     .baseMipLevel = 0,
-                    .levelCount = outImage->mipLevels,
+                    .levelCount = currentTexture->mipLevels,
                     .baseArrayLayer = 0,
                     .layerCount = createInfo.arrayLayers,
                 },
         };
 
-        const VkResult viewRes = vkCreateImageView(g_gfx.device, &viewCreateInfo, g_gfx.allocationCallbacks, &outImage->imageView);
+        const VkResult viewRes = vkCreateImageView(g_gfx.device, &viewCreateInfo, g_gfx.allocationCallbacks, &currentTexture->imageView);
         core_assert(viewRes == VK_SUCCESS);
     }
 
-    return outImage;
+    return outTextureHandle;
 }
+//=============================================================================
 
-
-GfxTexture* gfx_texture_load_from_file( const char* path ){
+//===API=======================================================================
+GfxTextureHandle gfx_texture_load_from_file( const char* path ){
     CoreRawImage rawImage = (CoreRawImage){};
 
     //TODO: read EXT and based on that select different load methods. currently only DDS is supported.
@@ -222,7 +209,7 @@ GfxTexture* gfx_texture_load_from_file( const char* path ){
         load_dds_image_alloc(allocators()->cstd, path, &rawImage);
     }
     core_assert_msg(rawImage.imageData->bufferAddress, "err: failed to load file.");
-
+    //TODO: replace code below with a new func called gfx_texture_load_from_memory().
     //TODO: caching here. (only read header info & based on that decide if the load should continue.
     GfxBuffer uploadBuffer = gfx_buffer_create(rawImage.dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO);
     memcpy(uploadBuffer.info.pMappedData, rawImage.imageData->bufferAddress, rawImage.dataSize);
@@ -248,27 +235,28 @@ GfxTexture* gfx_texture_load_from_file( const char* path ){
         .pQueueFamilyIndices = 0,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
-    GfxTexture* outTexture = gfx_image_create(imageCreateInfo);
+    GfxTextureHandle outTextureHandle = gfx_texture_create(imageCreateInfo);
+    GfxTexture* currentTexture = gfx_pool_get_gfx_texture(outTextureHandle);
 
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subresourceRange.baseMipLevel = 0;
-    subresourceRange.levelCount = outTexture->mipLevels;
+    subresourceRange.levelCount = currentTexture->mipLevels;
     subresourceRange.layerCount = 1;
 
-    AllocInfo* bufferCopyRegionsAlloc = mem_cstd_alloc(outTexture->mipLevels * sizeof(VkBufferImageCopy));
+    AllocInfo* bufferCopyRegionsAlloc = mem_cstd_alloc(currentTexture->mipLevels * sizeof(VkBufferImageCopy));
     {
         VkBufferImageCopy *bufferCopyRegions = (VkBufferImageCopy *) bufferCopyRegionsAlloc->bufferAddress;
         size_t offset = 0;
-        for (uint32_t i = 0; i < outTexture->mipLevels; i++) {
+        for (uint32_t i = 0; i < currentTexture->mipLevels; i++) {
             // set up a buffer image copy structure for the current mip level
             bufferCopyRegions[i] = (VkBufferImageCopy){
                 .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .imageSubresource.mipLevel = i,
                 .imageSubresource.baseArrayLayer = 0,
                 .imageSubresource.layerCount = 1,
-                .imageExtent.width = outTexture->extent.width >> i,
-                .imageExtent.height = outTexture->extent.height >> i,
+                .imageExtent.width = currentTexture->extent.width >> i,
+                .imageExtent.height = currentTexture->extent.height >> i,
                 .imageExtent.depth = 1,
                 .bufferOffset = offset,
             };
@@ -279,7 +267,7 @@ GfxTexture* gfx_texture_load_from_file( const char* path ){
         {
             set_image_layout(
                     cmdBuffer,
-                    outTexture->image,
+                    currentTexture->image,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     subresourceRange,
@@ -291,15 +279,15 @@ GfxTexture* gfx_texture_load_from_file( const char* path ){
             vkCmdCopyBufferToImage(
                     cmdBuffer,
                     uploadBuffer.buffer,
-                    outTexture->image,
+                    currentTexture->image,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    outTexture->mipLevels,
+                    currentTexture->mipLevels,
                     bufferCopyRegions
             );
 
             set_image_layout(
                     cmdBuffer,
-                    outTexture->image,
+                    currentTexture->image,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     subresourceRange,
@@ -312,17 +300,16 @@ GfxTexture* gfx_texture_load_from_file( const char* path ){
     mem_cstd_free(bufferCopyRegionsAlloc);
     allocators()->cstd.free(rawImage.imageData);
     gfx_buffer_cleanup(&uploadBuffer);
-    return outTexture;
+    return outTextureHandle;
 }
 
-
-void gfx_texture_cleanup(GfxTexture *inTexture) {
-    vkDestroyImageView(g_gfx.device, inTexture->imageView, g_gfx.allocationCallbacks);
-    vmaDestroyImage(g_gfx.allocator, inTexture->image, inTexture->allocation);
-    *inTexture = (GfxTexture){};
-
-    //TODO:GFX We don't re-add this as a free slot in the texture pool i.e.
-    //we could address this pretty simply in a few ways.
-    //create free-list for each pool and next time we try and create a new texture to check if any free list spaces are free
-    //we move the last image loaded into the newly free position and fix up and dependency, this will break any cached references.
+void gfx_texture_cleanup(GfxTextureHandle handle) {
+    GfxTexture* currentTexture = gfx_pool_get_gfx_texture(handle);
+    {
+        vkDestroyImageView(g_gfx.device, currentTexture->imageView, g_gfx.allocationCallbacks);
+        vmaDestroyImage(g_gfx.allocator, currentTexture->image, currentTexture->allocation);
+        *currentTexture = (GfxTexture){};
+    }
+    gfx_pool_release_gfx_texture(handle);
 }
+//=============================================================================

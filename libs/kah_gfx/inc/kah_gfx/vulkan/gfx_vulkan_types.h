@@ -3,6 +3,8 @@
 
 //===INCLUDES==================================================================
 #include <kah_gfx/vulkan/gfx_vulkan.h>
+#include <kah_gfx/vulkan/gfx_vulkan_buffer.h>
+
 #include <kah_core/texture_formats.h>
 
 #include <kah_math/vec2.h>
@@ -22,11 +24,9 @@ struct GfxImage {
 } typedef GfxImage;
 typedef uint32_t GfxImageHandle;
 typedef GfxImage (*GfxImageExternal_cb)();
-//=============================================================================
 
-//===PUBLIC_TYPES==============================================================
 struct GfxTexture {
-    VkImage image;
+    VkImage image; // TODO: consider replacing with GfxImageHandle
     VkImageView imageView;
     VmaAllocation allocation;
     VkFormat format;
@@ -34,13 +34,23 @@ struct GfxTexture {
     VkExtent3D extent;
     uint32_t mipLevels;
     uint32_t arrayLayers;
-
     uint32_t bindlessIndex;
 #if KAH_DEBUG
     char debug_name[128]; //TODO: replace with gfx string arena.
 #endif
 }typedef GfxTexture;
+typedef uint32_t GfxTextureHandle;
 
+struct GfxMesh{
+    GfxBuffer vertexBuffer;
+    GfxBuffer indexBuffer;
+    uint32_t numVertices;
+    uint32_t numIndices;
+} typedef GfxMesh;
+typedef uint32_t GfxMeshHandle;
+//=============================================================================
+
+//===PUBLIC_TYPES==============================================================
 struct GlobalGfx{
     VkInstance instance;
     VkPhysicalDevice physicalDevice;

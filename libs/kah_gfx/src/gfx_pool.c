@@ -44,10 +44,13 @@ static void pool_release_index(Pool* pool, uint32_t index){
 //===INTERNAL_STRUCTS==========================================================
 static struct GfxPool{
     Pool gfxImages;
+    Pool gfxTextures;
+    Pool gfxMeshes;
 }s_pool = {};
 //=============================================================================
 
 //===API=======================================================================
+//===GFX_IMAGE=================================================================
 GfxImageHandle gfx_pool_get_gfx_image_handle(){
     GfxImageHandle outHandle = (GfxImageHandle)pool_acquire_next_free_index(&s_pool.gfxImages);
     core_assert(outHandle < GFX_POOL_GFX_IMAGE_COUNT_MAX);
@@ -60,16 +63,59 @@ GfxImage* gfx_pool_get_gfx_image(GfxImageHandle handle){
 }
 
 void gfx_pool_release_gfx_image(GfxImageHandle handle){
-    pool_release_index(&s_pool.gfxImages,handle);
+    core_assert(handle < GFX_POOL_GFX_IMAGE_COUNT_MAX);
+    pool_release_index(&s_pool.gfxImages, handle);
 }
+//=============================================================================
+
+//===GFX_TEXTURE===============================================================
+GfxTextureHandle gfx_pool_get_gfx_texture_handle(){
+    GfxTextureHandle outHandle = (GfxTextureHandle)pool_acquire_next_free_index(&s_pool.gfxTextures);
+    core_assert(outHandle < GFX_POOL_GFX_TEXTURE_COUNT_MAX);
+    return outHandle;
+}
+
+GfxTexture* gfx_pool_get_gfx_texture(GfxTextureHandle handle){
+    core_assert(handle < GFX_POOL_GFX_TEXTURE_COUNT_MAX);
+    return fixed_array_get(&s_pool.gfxTextures.buffer, handle);
+}
+
+void gfx_pool_release_gfx_texture(GfxTextureHandle handle)
+{
+    core_assert(handle < GFX_POOL_GFX_TEXTURE_COUNT_MAX);
+    pool_release_index(&s_pool.gfxTextures, handle);
+}
+//=============================================================================
+
+//===GFX_MESH==================================================================
+GfxMeshHandle gfx_pool_get_gfx_mesh_handle(){
+    GfxMeshHandle outHandle = (GfxMeshHandle)pool_acquire_next_free_index(&s_pool.gfxMeshes);
+    core_assert(outHandle < GFX_POOL_GFX_MESH_COUNT_MAX);
+    return outHandle;
+}
+
+GfxMesh* gfx_pool_get_gfx_mesh(GfxMeshHandle handle){
+    core_assert(handle < GFX_POOL_GFX_MESH_COUNT_MAX);
+    return fixed_array_get(&s_pool.gfxMeshes.buffer, handle);
+}
+
+void gfx_pool_release_gfx_mesh(GfxMeshHandle handle){
+    core_assert(handle < GFX_POOL_GFX_MESH_COUNT_MAX);
+    pool_release_index(&s_pool.gfxMeshes, handle);
+}
+//=============================================================================
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================
 void gfx_pool_create(){
-    s_pool.gfxImages = pool_create(allocators()->page, sizeof(GfxImage), GFX_POOL_GFX_IMAGE_COUNT_MAX);
+    s_pool.gfxImages =   pool_create(allocators()->page, sizeof(GfxImage),   GFX_POOL_GFX_IMAGE_COUNT_MAX);
+    s_pool.gfxTextures = pool_create(allocators()->page, sizeof(GfxTexture), GFX_POOL_GFX_TEXTURE_COUNT_MAX);
+    s_pool.gfxMeshes =   pool_create(allocators()->page, sizeof(GfxMesh),    GFX_POOL_GFX_MESH_COUNT_MAX);
 }
 
 void gfx_pool_cleanup(){
     pool_cleanup(allocators()->page, &s_pool.gfxImages);
+    pool_cleanup(allocators()->page, &s_pool.gfxTextures);
+    pool_cleanup(allocators()->page, &s_pool.gfxMeshes);
 }
 //=============================================================================

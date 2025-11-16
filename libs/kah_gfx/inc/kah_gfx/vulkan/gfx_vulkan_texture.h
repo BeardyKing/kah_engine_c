@@ -6,8 +6,8 @@
 //=============================================================================
 
 //===API=======================================================================
-GfxTexture* gfx_texture_load_from_file( const char* path );
-void gfx_texture_cleanup(GfxTexture *inTexture);
+GfxTextureHandle gfx_texture_load_from_file( const char* path );
+void gfx_texture_cleanup(GfxTextureHandle handle);
 //=============================================================================
 
 //===DEFINES===================================================================

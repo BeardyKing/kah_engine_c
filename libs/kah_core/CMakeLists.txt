@@ -35,6 +35,10 @@ add_library(kah_core
         inc/kah_core/dds_loader.h
         src/dds_loader.c
         inc/kah_core/texture_formats.h
+        inc/kah_core/string_table.h
+        src/string_table.c
+        inc/kah_core/file_io.h
+        src/file_io.c
 )
 
 target_include_directories(kah_core

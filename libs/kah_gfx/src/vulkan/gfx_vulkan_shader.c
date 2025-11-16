@@ -1,14 +1,12 @@
+//===INCLUDES==================================================================
 #include <kah_gfx/vulkan/gfx_vulkan_shader.h>
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 #include <kah_gfx/gfx_converter.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/allocators.h>
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <string.h>
+#include <kah_core/file_io.h>
+//=============================================================================
 
 //===EXTERNAL_STRUCTS==========================================================
 extern GlobalGfx g_gfx;
@@ -16,29 +14,14 @@ extern GlobalGfx g_gfx;
 
 //===API=======================================================================
 VkShaderModule gfx_shader_load_binary(const char *path){
-    int fd = open(path, O_RDONLY | O_BINARY);
-    core_assert_msg(fd >= 0,"err: Failed to open shader file");
+    AllocInfo* allocInfo = file_io_load_into_buffer(allocators()->arena, path, true);
 
-    struct stat st = (struct stat){};
-    const int statResult = fstat(fd, &st);
-    core_assert_msg( statResult == 0, "err: fstat failed");
-
-    const uint32_t size = (uint32_t)st.st_size;
-    core_assert(size > 0);
-
-    AllocInfo* alloc = allocators()->arena.alloc((uint32_t)size);
-
-    char *shaderCode = (char *)alloc->bufferAddress;
-    const ssize_t bytesRead = read(fd, shaderCode, size);
-    close(fd);
-
-    core_assert_msg(bytesRead == (ssize_t)size,"err: Failed to read shader file");
     VkShaderModuleCreateInfo moduleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .codeSize = size,
-        .pCode = (const uint32_t *)shaderCode,
+        .codeSize = allocInfo->commitedMemory,
+        .pCode = (const uint32_t *)allocInfo->bufferAddress,
     };
 
     VkShaderModule shaderModule = VK_NULL_HANDLE;

@@ -23,8 +23,8 @@ bool _core_sanity_msg_impl(const char* file, const char* function, int line, con
 #define core_sanity()                   if (!_core_not_implemented_impl(__FILE__, __FUNCTION__, __LINE__)) core_debug_break()
 #define core_sanity_msg(...)            if (!_core_not_implemented_impl(__FILE__, __FUNCTION__, __LINE__, __VA_ARGS__))) core_debug_break()
 #else
-#define core_assert(condition)          (void)0
-#define core_assert_msg(condition, ...) (void)0
+#define core_assert(condition)          ((void)(condition))
+#define core_assert_msg(condition, ...) ((void)(condition))
 #define core_not_implemented()          (void)0
 #define core_sanity()                   (void)0
 #define core_sanity_msg(...)            (void)0

@@ -150,7 +150,7 @@ static void gfx_data_structures_create(){
     s_gfxDebug = (struct GfxDebug){};
     s_userArguments = (struct GfxUserArguments){ //TODO: replace with quake style CVAR system
         .selectedPhysicalDeviceIndex = 0,
-        .vsync = false,
+        .vsync = true,
         .msaa = VK_SAMPLE_COUNT_1_BIT
     };
 

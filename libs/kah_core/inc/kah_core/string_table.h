@@ -23,6 +23,7 @@ struct StrTableInfo{
 //===API=======================================================================
 void str_table_parse_destructive(StrTableInfo *out, char *inOutBuffer, char delim);
 const char* str_table_get_cell(const StrTableInfo *inTable, uint32_t row, uint32_t col);
+void str_table_print(const StrTableInfo *inTable);
 //=============================================================================
 
 #endif //STRING_TABLE_H

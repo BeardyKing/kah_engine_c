@@ -1,7 +1,9 @@
 //===INCLUDES==================================================================
 #include <kah_core/string_table.h>
 #include <kah_core/assert.h>
+
 #include <string.h>
+#include <stdio.h>
 //=============================================================================
 
 //===API=======================================================================
@@ -37,5 +39,16 @@ const char* str_table_get_cell(const StrTableInfo *inTable, uint32_t row, uint32
     const char *outStr = inTable->rows[row].str[col];
     core_assert(outStr != NULL);
     return outStr;
+}
+
+
+void str_table_print(const StrTableInfo *inTable){
+    for (uint32_t r = 0; r < inTable->rowCount; ++r){
+        for (uint32_t c = 0; c < inTable->rows[r].count; ++c){
+            const char* str = str_table_get_cell(inTable,r,c);
+            printf("| %s ", str);
+        }
+        printf("|\n");
+    }
 }
 //=============================================================================

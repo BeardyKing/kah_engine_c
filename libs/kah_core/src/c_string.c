@@ -62,14 +62,14 @@ bool c_str_remove_file_from_path(const char *inPath, char *outPath) {
     return true;
 }
 
-bool c_str_extract_file_name(const char *inPath, char *outFilename) {
+bool c_str_extract_file_name(char *inPath, char *outFilename) {
     if (c_str_empty(inPath) || outFilename == nullptr) {
         return false;
     }
 
-    const char *lastSlash = c_str_search_reverse((char*)inPath, "/");
+    const char *lastSlash = c_str_search_reverse(inPath, "/");
     if (lastSlash == nullptr) {
-        lastSlash = c_str_search_reverse((char*)inPath, "\\");
+        lastSlash = c_str_search_reverse(inPath, "\\");
         if (lastSlash == nullptr) {
             return false;
         }

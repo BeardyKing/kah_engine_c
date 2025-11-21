@@ -5,10 +5,10 @@
 //===API=======================================================================
 uint32_t pack_vec4f_to_uint32_t(const vec4f* vec){
     uint32_t packedValue = {0};
-    packedValue |= ((uint8_t)(vec->x * 0xFF) << 24);
-    packedValue |= ((uint8_t)(vec->y * 0xFF) << 16);
-    packedValue |= ((uint8_t)(vec->z * 0xFF) << 8);
-    packedValue |= ((uint8_t)(vec->w * 0xFF) << 0);
+    packedValue |= (uint32_t)((uint8_t)(vec->x * 255.0f)) << 24;
+    packedValue |= (uint32_t)((uint8_t)(vec->y * 255.0f)) << 16;
+    packedValue |= (uint32_t)((uint8_t)(vec->z * 255.0f)) << 8;
+    packedValue |= (uint32_t)((uint8_t)(vec->w * 255.0f)) << 0;
     return packedValue;
 }
 

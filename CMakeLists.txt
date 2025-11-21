@@ -7,7 +7,6 @@ endif()
 
 set(KAH_CMAKE_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_compile_definitions("KAH_CMAKE_SRC_ASSETS_DIR=\"${KAH_CMAKE_ROOT_DIR}/\"")
-add_compile_definitions("KAH_CMAKE_RUNTIME_ASSETS_DIR=\"${CMAKE_BINARY_DIR}/dist/runtime/\"")
 
 #====THIRD_PARTY_LIBS=====
 add_subdirectory(libs/third_party)

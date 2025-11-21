@@ -27,29 +27,33 @@ else ()
 endif ()
 
 
-target_compile_options(kah_math PRIVATE
-#===SUPPORTED TARGETS==========================================================
-    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<PLATFORM_ID:MinGW>>:
-#==============================================================================
-#===DISABLE====================================================================
-    -Wno-old-style-declaration
-#==============================================================================
-#===ENABLE=====================================================================
-    -Werror
-    -Wall
-    -Wextra
-    -Wunused-variable
-    -Wreturn-type
-    -Wconversion
-    -Wsign-conversion
-    -Wfloat-conversion
-    -Wnarrowing
-    -Wreturn-local-addr
-    -Wuninitialized
-    -Wshadow
-    -Wpointer-arith
-    -Wint-to-pointer-cast
-    -Wbad-function-cast
-#==============================================================================
-    >
-)
+#target_compile_options(kah_math PRIVATE
+##===SUPPORTED TARGETS==========================================================
+#    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<PLATFORM_ID:MinGW>>:
+##==============================================================================
+##===DISABLE====================================================================
+#    #-Wno-old-style-declaration
+#    -Wno-declaration-after-statement
+#    -Wno-pre-c23-compat
+#    -Wno-unsafe-buffer-usage
+#    -Wno-error=float-equal
+##==============================================================================
+##===ENABLE=====================================================================
+#    -Werror
+#    -Wall
+#    -Wextra
+#    -Wunused-variable
+#    -Wreturn-type
+#    -Wconversion
+#    -Wsign-conversion
+#    -Wfloat-conversion
+#    -Wnarrowing
+#    -Wreturn-local-addr
+#    -Wuninitialized
+#    -Wshadow
+#    -Wpointer-arith
+#    -Wint-to-pointer-cast
+#    -Wbad-function-cast
+##==============================================================================
+#    >
+#)

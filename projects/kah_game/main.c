@@ -8,6 +8,8 @@
 #include <kah_core/time.h>
 #include <kah_core/window.h>
 #include <kah_core/bit_array.h>
+#include <kah_core/cvar.h>
+#include <kah_core/filesystem.h>
 
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
@@ -16,6 +18,14 @@
 #include <string.h>
 //=============================================================================
 
+i32_cvar_t* windowX = nullptr;
+i32_cvar_t* windowY = nullptr;
+
+void cvar_register()
+{
+    windowX = i32_cvar_create("windowSizeX", C_VAR_DISK, 1024, 0, INT32_MAX);
+    windowY = i32_cvar_create("windowSizeY", C_VAR_DISK, 768, 0, INT32_MAX);
+}
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
 void imgui_update() {
@@ -27,12 +37,15 @@ void imgui_update() {
 }
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
-int main(void)
+int main(int argc, char** argv)
 {
+    fs_create(argc, argv);
     mem_create();
     allocator_create();
     {
-        window_create("kah engine - runtime", (vec2i){1024, 768}, KAH_WINDOW_POSITION_CENTERED);
+        cvar_create("options.csv");
+        cvar_register();
+        window_create("kah engine - runtime", (vec2i){ i32_cvar_get(windowX), i32_cvar_get(windowY) }, KAH_WINDOW_POSITION_CENTERED);
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
         window_set_procedure_callback_func(gfx_imgui_get_proc_function_pointer());
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
@@ -56,11 +69,16 @@ int main(void)
         input_cleanup();
         time_cleanup();
         window_cleanup();
+        cvar_cleanup();
     }
     allocator_cleanup();
     mem_cleanup();
+    fs_cleanup();
 
     mem_dump_info();
     core_assert_msg(mem_alloc_table_empty(), "err: memory leaks");
+    if (mem_alloc_table_empty()) {
+        printf("leaks");
+    }
     return 0;
 }

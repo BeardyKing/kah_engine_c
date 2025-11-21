@@ -20,6 +20,7 @@
 #include <kah_core/c_string.h>
 #include <kah_core/utils.h>
 #include <kah_core/bit_array.h>
+#include <kah_core/filesystem.h>
 
 #include <kah_math/utils.h>
 #include <kah_math/vec2.h>
@@ -1391,7 +1392,7 @@ VkPhysicalDeviceMemoryProperties gfx_get_device_memory_properties()
 //===INIT/SHUTDOWN=============================================================
 void gfx_create(void* windowHandle){
 #if CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
-    gfx_converter_create(CONVERTER_SRC_ASSRT_DIR , CONVERTER_RUNTIME_ASSET_DIR);
+    gfx_converter_create(CONVERTER_SRC_ASSRT_DIR , fs_exe_dir());
 #endif //CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
 
     gfx_pool_create();

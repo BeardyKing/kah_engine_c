@@ -11,7 +11,7 @@
 #include <string.h>
 
 #if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
-#include <windows.h>
+#include <Windows.h>
 #endif
 //=============================================================================
 
@@ -45,17 +45,17 @@ static size_t s_pageSize = 0;
 //=============================================================================
 
 //===INTERNAL==================================================================
-void* malloc_zeroed(size_t size){
+static void* malloc_zeroed(size_t size){
     return calloc(1, size);
 }
 
-uint32_t alloc_info_get_next_free_index(){
+static uint32_t alloc_info_get_next_free_index(){
     const size_t bitIndex = bitarray_find_first_unset_bit(&s_allocationTable.infoInUse.header);
     core_assert_msg(bitIndex != UINT64_MAX, "err: alloc info has no free slots");
     return bitIndex != UINT64_MAX ? (uint32_t)bitIndex : ALLOC_TABLE_INVALID_INDEX;
 }
 
-uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
+static uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
     //TODO: replace loop with find next set bit bitarr start at idx or hash table lookup
     for (uint32_t i = 0; i < MEM_MAX_DYNAMIC_ALLOCATIONS; ++i){
         if(&s_allocationTable.infos[i] == allocInfo){
@@ -148,7 +148,11 @@ static CORE_FORCE_INLINE void internal_page_free(AllocInfo* allocInfo){
     const uint32_t tableIndex = alloc_info_find_index(allocInfo);
     core_assert_msg(tableIndex != ALLOC_TABLE_INVALID_INDEX, "Page free: AllocInfo not found in table");
 
-    WINBOOL result = VirtualFree(allocInfo->bufferAddress, 0, MEM_RELEASE);
+    BOOL result = VirtualFree(allocInfo->bufferAddress, 0, MEM_RELEASE);
+    if (!result) {
+        DWORD err = GetLastError();
+        printf("VirtualFree failed: %lu\n", err);
+    }
     core_assert_msg(result != 0, "VirtualFree failed");
 
     *allocInfo = (AllocInfo){};
@@ -282,7 +286,8 @@ void mem_arena_realloc(AllocInfo* allocInfo, size_t inBufferSize){
 }
 
 void mem_arena_reset(){
-    *s_arenaData = (ArenaData){};
+    memset(s_arenaData, 0, (sizeof(*s_arenaData)));
+    //*s_arenaData = (ArenaData){};
 }
 
 AllocInfo* mem_page_alloc(size_t inBufferSize){

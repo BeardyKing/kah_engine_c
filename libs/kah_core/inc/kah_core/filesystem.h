@@ -7,9 +7,9 @@
 
 //===DEFINES===================================================================
 #define KAH_FILESYSTEM_MAX_PATH 260 //MAX_PATH
-//===API=======================================================================
-
 //=============================================================================
+
+//===API=======================================================================
 bool fs_mkdir(const char *path);
 bool fs_mkdir_recursive(const char *path);
 
@@ -19,7 +19,14 @@ bool fs_file_exists(const char *path);
 bool fs_file_is_absolute(const char *inPath);
 
 size_t fs_file_size(const char *path);
+
+const char* fs_exe_path(void);
+const char* fs_exe_dir(void);
 //=============================================================================
 
+//===INIT/SHUTDOWN=============================================================
+void fs_create(int argc, char** argv);
+void fs_cleanup(void);
+//=============================================================================
 
 #endif //FILESYSTEM_H

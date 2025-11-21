@@ -36,6 +36,6 @@ void allocator_create() {
 }
 
 void allocator_cleanup() {
-    s_allocators = (CoreAllocators){};
+    s_allocators = (CoreAllocators){0};
 }
 //=============================================================================

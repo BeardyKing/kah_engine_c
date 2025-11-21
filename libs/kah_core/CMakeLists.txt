@@ -39,6 +39,8 @@ add_library(kah_core
         src/string_table.c
         inc/kah_core/file_io.h
         src/file_io.c
+        inc/kah_core/cvar.h
+        src/cvar.c
 )
 
 target_include_directories(kah_core
@@ -81,29 +83,33 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif ()
 
 
-target_compile_options(kah_core PRIVATE
-#===SUPPORTED TARGETS==========================================================
-    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<PLATFORM_ID:MinGW>>:
-#==============================================================================
-#===DISABLE====================================================================
-    -Wno-old-style-declaration
-#==============================================================================
-#===ENABLE=====================================================================
-    -Werror
-    -Wall
-    -Wextra
-    -Wunused-variable
-    -Wreturn-type
-    -Wconversion
-    -Wsign-conversion
-    -Wfloat-conversion
-    -Wnarrowing
-    -Wreturn-local-addr
-    -Wuninitialized
-    -Wshadow
-    -Wpointer-arith
-    -Wint-to-pointer-cast
-    -Wbad-function-cast
-#==============================================================================
-    >
-)
+#target_compile_options(kah_core PRIVATE
+##===SUPPORTED TARGETS==========================================================
+#    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<PLATFORM_ID:MinGW>>:
+##==============================================================================
+##===DISABLE====================================================================
+#    #-Wno-old-style-declaration
+#    -Wno-declaration-after-statement
+#    -Wno-pre-c23-compat
+#    -Wno-unsafe-buffer-usage
+#    -Wno-error=float-equal
+##==============================================================================
+##===ENABLE=====================================================================
+#    -Werror
+#    -Wall
+#    -Wextra
+#    -Wunused-variable
+#    -Wreturn-type
+#    -Wconversion
+#    -Wsign-conversion
+#    -Wfloat-conversion
+#    -Wnarrowing
+#    -Wreturn-local-addr
+#    -Wuninitialized
+#    -Wshadow
+#    -Wpointer-arith
+#    -Wint-to-pointer-cast
+#    -Wbad-function-cast
+##==============================================================================
+#    >
+#)

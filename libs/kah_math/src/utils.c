@@ -3,9 +3,8 @@
 //=============================================================================
 
 //===DEFINES===================================================================
-#define KAH_PI 3.14159265358979323846264338327950288f
 #define KAH_PI_FLOAT 3.1415927f
-#define KAH_PI_DOUBLE 3.141592653589793f
+#define KAH_PI_DOUBLE 3.141592653589793
 //=============================================================================
 
 //===API=======================================================================
@@ -24,7 +23,7 @@ float as_degrees_f(float radians){
 }
 
 float as_radians_f(float degrees){
-    return degrees * (KAH_PI_DOUBLE / 180.0f);
+    return degrees * (KAH_PI_FLOAT / 180.0f);
 }
 
 double clamp_d(double value, double min, double max){

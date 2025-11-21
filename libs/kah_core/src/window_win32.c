@@ -364,7 +364,7 @@ void window_create(const char* windowTitle, const vec2i windowSize, const vec2i 
         rawInputDevice[0].usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
         rawInputDevice[0].dwFlags = RIDEV_INPUTSINK;
         rawInputDevice[0].hwndTarget = s_windowInfo.handle;
-        const WINBOOL result = RegisterRawInputDevices(rawInputDevice, 1, sizeof(rawInputDevice[0]));
+        const BOOL result = RegisterRawInputDevices(rawInputDevice, 1, sizeof(rawInputDevice[0]));
         core_assert_msg(result == TRUE, "Failed to register raw input devices");
     }
 }

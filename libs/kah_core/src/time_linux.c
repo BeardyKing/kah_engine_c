@@ -1,4 +1,5 @@
 #include <kah_core/defines.h>
+#include <kah_core/time.h>
 #if CHECK_FEATURE(FEATURE_PLATFORM_LINUX)
 
 //===INCLUDES==================================================================

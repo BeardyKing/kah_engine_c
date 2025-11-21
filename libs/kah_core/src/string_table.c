@@ -1,6 +1,7 @@
 //===INCLUDES==================================================================
 #include <kah_core/string_table.h>
 #include <kah_core/assert.h>
+#include <kah_core/c_string.h>
 
 #include <string.h>
 #include <stdio.h>

@@ -5,6 +5,7 @@
 
 #include <kah_math/utils.h>
 
+#include <string.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -171,7 +172,7 @@ enum TextureFormatDXGI{
     DXGI_FORMAT_V408 = 132,
     DXGI_FORMAT_SAMPLER_FEEDBACK_MIN_MIP_OPAQUE,
     DXGI_FORMAT_SAMPLER_FEEDBACK_MIP_REGION_USED_OPAQUE,
-    DXGI_FORMAT_FORCE_UINT = 0xffffffff
+    //DXGI_FORMAT_FORCE_UINT = 0xffffffff
 }typedef TextureFormatDXGI;
 //======================================================================================================================
 
@@ -195,7 +196,7 @@ static CoreTextureFormat internal_dxgi_to_beet_texture_format(const TextureForma
         case DXGI_FORMAT_BC5_UNORM:         return CORE_TEXTURE_FORMAT_BC5;
         case DXGI_FORMAT_BC6H_UF16:         return CORE_TEXTURE_FORMAT_BC6H;
         case DXGI_FORMAT_BC7_UNORM:         return CORE_TEXTURE_FORMAT_BC7;
-        default:;
+        default:
     };
     core_sanity();
     return CORE_TEXTURE_FORMAT_INVALID;
@@ -409,39 +410,39 @@ static void get_image_info( uint32_t width, uint32_t height, TextureFormatDXGI t
 
 //===API================================================================================================================
 void load_dds_image_alloc(Allocator allocator, const char *path, CoreRawImage *outRawImage) {
-    int fd = open(path, O_RDONLY | O_BINARY);
-    core_assert_msg(fd, "err: failed to open .dds file %s", path);
+    FILE* fp = fopen(path, "rb");
+    core_assert_msg(fp != NULL, "err: failed to open .dds file %s", path);
 
     size_t fileSize = fs_file_size(path);
     core_assert_msg(fileSize > 0, "err: failed to stat file for size");
 
     char ext[4];
-    if (read(fd, ext, 4) != 4) {
-        core_assert_msg(0,"err: failed to read in fourCC 'DDS ' from: %s\n", path);
-        close(fd);
+    if (fread(ext, 1, 4, fp) != 4) {
+        core_assert_msg(0, "err: failed to read in fourCC 'DDS ' from: %s\n", path);
+        fclose(fp);
         return;
     }
 
-    constexpr char expectedHeaderFmt[4] = {'D','D','S',' '};
+    char expectedHeaderFmt[4] = {'D','D','S',' '};
     bool isMatchFourCC = memcmp(ext, expectedHeaderFmt, sizeof(char) * 4) == 0;
     core_assert_msg(isMatchFourCC, "err: input header did not match [D][D][S][] received [%c][%c][%c][%c] for path : %s \n", ext[0], ext[1], ext[2], ext[3], path);
 
     size_t remainingSize = fileSize - 4;
     AllocInfo* fileAlloc = allocator.alloc(remainingSize);
     char *rawFileData = (char *)fileAlloc->bufferAddress;
-    if (read(fd, rawFileData, (uint32_t)remainingSize) != (ssize_t)remainingSize) {
+    if (fread(rawFileData, 1, (size_t)remainingSize, fp) != (size_t)remainingSize) {
         printf("err: failed to read DDS file contents: %s\n", path);
-        close(fd);
+        fclose(fp);
         return;
     }
-    close(fd);
+    fclose(fp);
 
     const HeaderDDS *header = (const HeaderDDS *) rawFileData;
     const uint32_t width = header->dwWidth;
     const uint32_t height = header->dwHeight;
     const uint32_t depth = header->dwDepth;
     uint32_t mipCount = header->dwMipMapCount;
-    TextureFormatDXGI format = {};
+    TextureFormatDXGI format = {0};
 
     core_assert_msg(mipCount < CORE_RAW_IMAGE_MIP_MAX, "Err: mip count exceeded max supported mip count of %u", CORE_RAW_IMAGE_MIP_MAX);
     if (mipCount == 0) {

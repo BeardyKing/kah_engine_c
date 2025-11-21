@@ -7,6 +7,9 @@
 
 //===INTERNAL==================================================================
 static CORE_FORCE_INLINE void* internal_get_memory_at_index(FixedArray* fixedArray, uint32_t index) {
+    core_assert(fixedArray);
+    core_assert(fixedArray->info);
+    core_assert(fixedArray->info->bufferAddress);
     if (index >= fixedArray->count) {
         core_assert(false);
         return nullptr;
@@ -27,6 +30,7 @@ void fixed_array_insert(FixedArray* fixedArray, uint32_t index, void* data){
 
 void* fixed_array_get(FixedArray* fixedArray, uint32_t index){
     core_assert(fixedArray != nullptr);
+    core_assert(fixedArray->info != nullptr);
     core_assert(fixedArray->info->bufferAddress != nullptr);
     core_assert(index < fixedArray->count);
     return internal_get_memory_at_index(fixedArray, index);

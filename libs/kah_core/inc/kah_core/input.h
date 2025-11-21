@@ -38,6 +38,9 @@ void input_mouse_up(int32_t keyCode);
 void input_mouse_move(int32_t x, int32_t y);
 void input_mouse_scroll(int32_t y);
 void input_mouse_windowed_position(int32_t x, int32_t y);
+
+void input_set_mouse_sensitivity(vec2f sensitivity);
+void input_set_scroll_sensitivity(float sensitivity);
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================

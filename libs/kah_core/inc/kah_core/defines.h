@@ -4,7 +4,7 @@
 //===FEATURES==================================================================
 #define FEATURE_ON 1
 #define FEATURE_OFF 0
-#define CHECK_FEATURE(cond) _FEATURE_BOOL_TO_FEATURE(cond)
+#define CHECK_FEATURE(cond) KAH_FEATURE_BOOL_TO_FEATURE(cond)
 
 #if defined(_WIN32) || defined(_WIN64)
 #define FEATURE_PLATFORM_WINDOWS FEATURE_ON
@@ -27,10 +27,10 @@
 //=============================================================================
 
 //===IMPL======================================================================
-#define _FEATURE_BOOL_TO_FEATURE(x) _FEATURE_BOOL_TO_FEATURE_IMPL(x)
-#define _FEATURE_BOOL_TO_FEATURE_IMPL(x) _FEATURE_##x
-#define _FEATURE_1 FEATURE_ON
-#define _FEATURE_0 FEATURE_OFF
+#define KAH_FEATURE_BOOL_TO_FEATURE(x) KAH_FEATURE_BOOL_TO_FEATURE_IMPL(x)
+#define KAH_FEATURE_BOOL_TO_FEATURE_IMPL(x) KAH_FEATURE_##x
+#define KAH_FEATURE_1 FEATURE_ON
+#define KAH_FEATURE_0 FEATURE_OFF
 //=============================================================================
 
 //===COMPILER==================================================================
@@ -46,7 +46,6 @@
 //===PATHS=====================================================================
 #if CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
 #define CONVERTER_SRC_ASSRT_DIR KAH_CMAKE_SRC_ASSETS_DIR
-#define CONVERTER_RUNTIME_ASSET_DIR KAH_CMAKE_RUNTIME_ASSETS_DIR
 #endif
 //=============================================================================
 #endif // DEFINES_H

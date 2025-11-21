@@ -53,7 +53,7 @@ void bitarray_print(BitArrayHeader* header) {
         }
 
         bitStr[bitStrIndex] = '\0';
-        printf("word[%zd]: %s\n", wordIndex, bitStr);
+        printf("word[%zu]: %s\n", wordIndex, bitStr);
     }
 }
 

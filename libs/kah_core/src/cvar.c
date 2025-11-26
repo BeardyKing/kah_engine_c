@@ -1,31 +1,40 @@
-
-#include <stdio.h>
-#include <stdlib.h>
+//===INCLUDES==================================================================
 #include <kah_core/cvar.h>
 #include <kah_core/string_table.h>
 #include <kah_core/allocators.h>
 #include <kah_core/file_io.h>
+#include <kah_core/assert.h>
+#include <kah_core/c_string.h>
+#include <kah_core/filesystem.h>
 
-#include "assert.h"
-#include "c_string.h"
-#include "filesystem.h"
+#include <kah_math/utils.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+//=============================================================================
+
+//===STRUCTS_INTERNAL==========================================================
 constexpr size_t CVAR_INT32_ENTRY_COUNT = 128;
 
 static StrTableInfo s_stringTable;
 static AllocInfo* s_diskCVars = nullptr;
 
 struct i32_cvarDesc { i32_cvar_t cvar; CVarLoadType loadType; } typedef i32_cvarDesc;
-struct i32_cvarPair { char key[CVAR_NAME_SIZE]; struct i32_cvarDesc value; } typedef i32_cvarPair;
+struct i32_cvarPair { char key[CVAR_NAME_SIZE + 1]; struct i32_cvarDesc value; } typedef i32_cvarPair; //TODO: replace key with cvar name hash.
 
 struct CVarTables {
     struct { i32_cvarPair table[CVAR_INT32_ENTRY_COUNT]; uint32_t count; } i32;
 
     uint32_t totalCount;
 }typedef CVarTables;
+//=============================================================================
 
+//===DATA_INTERNAL=============================================================
 static CVarTables s_cVarTables = (CVarTables){};
+static char s_cvarPath[KAH_FILESYSTEM_MAX_PATH] = {};
+//=============================================================================
 
+//===INTERNAL==================================================================
 static i32_cvarPair* i32_cvar_get_entry(const char* name){
     i32_cvarPair* out = &s_cVarTables.i32.table[s_cVarTables.i32.count++];
 #if KAH_DEBUG
@@ -46,9 +55,32 @@ static uint32_t search_str_table_for_cvar(const char* name){
     }
     return UINT32_MAX;
 }
+//=============================================================================
+
+//===INTERNAL_SERIALISE========================================================
+static void cvar_serialise_disk_vars_i32(FILE* fp) {
+    for (uint32_t i = 0; i < s_cVarTables.i32.count; i++) {
+        i32_cvarPair* cvarEntry = &s_cVarTables.i32.table[i];
+        if (cvarEntry->value.loadType == C_VAR_DISK) {
+            fprintf(fp, "%s,%d\n", s_cVarTables.i32.table[i].key, cvarEntry->value.cvar.current);
+        }
+    }
+}
+//=============================================================================
+
+//===API=======================================================================
+void cvar_serialise_disk_vars() {
+    core_assert(!c_str_empty(s_cvarPath));
+    FILE* fp = fopen(s_cvarPath, "w");
+    {
+        core_assert(fp);
+        cvar_serialise_disk_vars_i32(fp);
+    }
+    fclose(fp);
+}
 
 i32_cvar_t *i32_cvar_create(const char* name, CVarLoadType loadType, int32_t defaultValue, int32_t min, int32_t max){
-    //TODO: name length validation. based on CVAR_NAME_SIZE
+    core_assert(strlen(name) < (sizeof(char) * CVAR_NAME_SIZE));
     i32_cvarPair* tableEntry = i32_cvar_get_entry(name);
     tableEntry->value = (i32_cvarDesc){
         .cvar = (i32_cvar_t){ .current = defaultValue, .reset = defaultValue, .fallback = defaultValue, .min = min, .max = max },
@@ -56,18 +88,21 @@ i32_cvar_t *i32_cvar_create(const char* name, CVarLoadType loadType, int32_t def
     };
 
     if(loadType == C_VAR_DISK && s_diskCVars != nullptr){
-        const uint32_t rowIndex = search_str_table_for_cvar(name);
+        const uint32_t rowIndex = search_str_table_for_cvar(name); //TODO: replace with hash lookup.
         if(rowIndex != UINT32_MAX){
-            //TODO: don't set this var or clamp if not within range.
-            tableEntry->value.cvar.current = atoi(str_table_get_cell(&s_stringTable, rowIndex, 1));
+            const int32_t current = clamp_i32(atoi(str_table_get_cell(&s_stringTable, rowIndex, 1)), min, max);
+            tableEntry->value.cvar.current = current;
             tableEntry->value.cvar.reset = tableEntry->value.cvar.current;
         }
     }
-
     return &tableEntry->value.cvar;
 }
+//=============================================================================
 
+//===INIT/SHUTDOWN=============================================================
 void cvar_create(const char* path){
+    core_assert(strlen(path) < KAH_FILESYSTEM_MAX_PATH);
+    strcpy(s_cvarPath, path);
     if(fs_file_exists(path)){
         s_diskCVars = file_io_load_into_buffer(allocators()->arena, path, true);
         str_table_parse_destructive(&s_stringTable, s_diskCVars->bufferAddress, ',');
@@ -75,5 +110,6 @@ void cvar_create(const char* path){
 }
 
 void cvar_cleanup(){
-    //TODO: write file back to disk.
+    cvar_serialise_disk_vars();
 }
+//=============================================================================

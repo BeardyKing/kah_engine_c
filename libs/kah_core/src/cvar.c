@@ -14,15 +14,20 @@
 //=============================================================================
 
 //===STRUCTS_INTERNAL==========================================================
-constexpr size_t CVAR_INT32_ENTRY_COUNT = 128;
-
 static StrTableInfo s_stringTable;
 static AllocInfo* s_diskCVars = nullptr;
+
+struct bool_cvarDesc { bool_cvar_t cvar; CVarLoadType loadType; } typedef bool_cvarDesc;
+struct bool_cvarPair { char key[CVAR_NAME_SIZE + 1]; struct bool_cvarDesc value; } typedef bool_cvarPair; //TODO: replace key with cvar name hash.
 
 struct i32_cvarDesc { i32_cvar_t cvar; CVarLoadType loadType; } typedef i32_cvarDesc;
 struct i32_cvarPair { char key[CVAR_NAME_SIZE + 1]; struct i32_cvarDesc value; } typedef i32_cvarPair; //TODO: replace key with cvar name hash.
 
+constexpr size_t CVAR_INT32_ENTRY_COUNT = 128;
+constexpr size_t CVAR_BOOL8_ENTRY_COUNT = 128;
+
 struct CVarTables {
+    struct { bool_cvarPair table[CVAR_BOOL8_ENTRY_COUNT]; uint32_t count; } b8;
     struct { i32_cvarPair table[CVAR_INT32_ENTRY_COUNT]; uint32_t count; } i32;
 
     uint32_t totalCount;
@@ -35,6 +40,18 @@ static char s_cvarPath[KAH_FILESYSTEM_MAX_PATH] = {};
 //=============================================================================
 
 //===INTERNAL==================================================================
+
+static bool_cvarPair* bool_cvar_get_entry(const char* name) {
+    bool_cvarPair* out = &s_cVarTables.b8.table[s_cVarTables.b8.count++];
+#if KAH_DEBUG
+    for (uint32_t i = 0; i < s_cVarTables.b8.count; ++i) {
+        core_assert(!c_str_equal(name, s_cVarTables.b8.table[i].key));
+    }
+#endif
+    snprintf(out->key, CVAR_NAME_SIZE, "%s", name);
+    return out;
+}
+
 static i32_cvarPair* i32_cvar_get_entry(const char* name){
     i32_cvarPair* out = &s_cVarTables.i32.table[s_cVarTables.i32.count++];
 #if KAH_DEBUG
@@ -66,17 +83,45 @@ static void cvar_serialise_disk_vars_i32(FILE* fp) {
         }
     }
 }
+
+static void cvar_serialise_disk_vars_bool(FILE* fp) {
+    for (uint32_t i = 0; i < s_cVarTables.b8.count; i++) {
+        bool_cvarPair* cvarEntry = &s_cVarTables.b8.table[i];
+        if (cvarEntry->value.loadType == C_VAR_DISK) {
+            fprintf(fp, "%s,%i\n", s_cVarTables.b8.table[i].key, !!cvarEntry->value.cvar.current);
+        }
+    }
+}
 //=============================================================================
 
 //===API=======================================================================
 void cvar_serialise_disk_vars() {
     core_assert(!c_str_empty(s_cvarPath));
-    FILE* fp = fopen(s_cvarPath, "w");
-    {
+    FILE* fp = fopen(s_cvarPath, "w");{
         core_assert(fp);
+        cvar_serialise_disk_vars_bool(fp);
         cvar_serialise_disk_vars_i32(fp);
     }
     fclose(fp);
+}
+
+bool_cvar_t* bool_cvar_create(const char* name, CVarLoadType loadType, bool defaultValue) {
+    core_assert(strlen(name) < (sizeof(char) * CVAR_NAME_SIZE));
+    bool_cvarPair* tableEntry = bool_cvar_get_entry(name);
+    tableEntry->value = (bool_cvarDesc){
+        .cvar = (bool_cvar_t){.current = defaultValue, .reset = defaultValue, .fallback = defaultValue},
+        .loadType = loadType
+    };
+
+    if (loadType == C_VAR_DISK && s_diskCVars != nullptr) {
+        const uint32_t rowIndex = search_str_table_for_cvar(name); //TODO: replace with hash lookup.
+        if (rowIndex != UINT32_MAX) {
+            const bool current = !!atoi(str_table_get_cell(&s_stringTable, rowIndex, 1));
+            tableEntry->value.cvar.current = current;
+            tableEntry->value.cvar.reset = tableEntry->value.cvar.current;
+        }
+    }
+    return &tableEntry->value.cvar;
 }
 
 i32_cvar_t *i32_cvar_create(const char* name, CVarLoadType loadType, int32_t defaultValue, int32_t min, int32_t max){

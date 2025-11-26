@@ -18,13 +18,14 @@
 #include <string.h>
 //=============================================================================
 
-i32_cvar_t* windowX = nullptr;
-i32_cvar_t* windowY = nullptr;
+i32_cvar_t* core_windowX = nullptr;
+i32_cvar_t* core_windowY = nullptr;
+bool_cvar_t* core_vSyncEnabled = nullptr;
 
-void cvar_register()
-{
-    windowX = i32_cvar_create("windowSizeX", C_VAR_DISK, 1024, 0, INT32_MAX);
-    windowY = i32_cvar_create("windowSizeY", C_VAR_DISK, 768, 0, INT32_MAX);
+void cvar_register(){
+    core_windowX = i32_cvar_create("windowSizeX", C_VAR_DISK, 1024, 0, INT32_MAX);
+    core_windowY = i32_cvar_create("windowSizeY", C_VAR_DISK, 768, 0, INT32_MAX);
+    core_vSyncEnabled = bool_cvar_create("vSyncEnabled", C_VAR_DISK, true); 
 }
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
     {
         cvar_create("options.csv");
         cvar_register();
-        window_create("kah engine - runtime", (vec2i){ i32_cvar_get(windowX), i32_cvar_get(windowY) }, KAH_WINDOW_POSITION_CENTERED);
+        window_create("kah engine - runtime", (vec2i){ i32_cvar_get(core_windowX), i32_cvar_get(core_windowY) }, KAH_WINDOW_POSITION_CENTERED);
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
         window_set_procedure_callback_func(gfx_imgui_get_proc_function_pointer());
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)

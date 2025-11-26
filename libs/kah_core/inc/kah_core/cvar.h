@@ -14,13 +14,9 @@
 //===TYPES=====================================================================
 struct bool_cvar_t  { bool      current; bool       reset; bool     fallback;                                   } typedef bool_cvar_t;
 struct i32_cvar_t   { int32_t   current; int32_t    reset; int32_t  fallback; int32_t   min; int32_t    max;    } typedef i32_cvar_t;
-struct u32_cvar_t   { uint64_t  current; uint64_t   reset; uint64_t fallback; uint64_t  min; uint64_t   max;    } typedef u32_cvar_t;
-struct i64_cvar_t   { int64_t   current; int64_t    reset; int64_t  fallback; int64_t   min; int64_t    max;    } typedef i64_cvar_t;
-struct u64_cvar_t   { uint32_t  current; uint32_t   reset; uint32_t fallback; uint32_t  min; uint32_t   max;    } typedef u64_cvar_t;
+struct u32_cvar_t   { uint32_t  current; uint32_t   reset; uint32_t fallback; uint32_t  min; uint32_t   max;    } typedef u32_cvar_t;
 struct f32_cvar_t   { float     current; float      reset; float    fallback; float     min; float      max;    } typedef f32_cvar_t;
-struct f64_cvar_t   { double    current; double     reset; double   fallback; double    min; double     max;    } typedef f64_cvar_t;
 struct vec2i_cvar_t { vec2i     current; vec2i      reset; vec2i    fallback; vec2i     min; vec2i      max;    } typedef vec2i_cvar_t;
-struct vec2u_cvar_t { vec2u     current; vec2u      reset; vec2u    fallback; vec2u     min; vec2u      max;    } typedef vec2u_cvar_t;
 
 #define CVAR_NAME_SIZE 32
 enum CVarLoadType {
@@ -31,18 +27,26 @@ enum CVarLoadType {
 
 //===API=======================================================================
 bool_cvar_t* bool_cvar_create(const char* name, CVarLoadType loadType, bool defaultValue);
-CORE_FORCE_INLINE int32_t bool_cvar_get(bool_cvar_t* cVar)                   { return cVar->current; };
-CORE_FORCE_INLINE void bool_cvar_set(bool_cvar_t* cVar, int32_t inVal)       { cVar->current = inVal; }
-CORE_FORCE_INLINE void bool_cvar_reset(bool_cvar_t* cVar)                    { cVar->current = cVar->reset; }
-CORE_FORCE_INLINE void bool_cvar_set_reset(bool_cvar_t* cVar, int32_t inVal) { cVar->reset = inVal; }
-CORE_FORCE_INLINE void bool_cvar_reset_to_default(bool_cvar_t* cVar)         { cVar->current = cVar->reset; };
+CORE_FORCE_INLINE bool bool_cvar_get(bool_cvar_t* cVar)                     { return cVar->current; };
+CORE_FORCE_INLINE void bool_cvar_set(bool_cvar_t* cVar, bool inVal)         { cVar->current = inVal; }
+CORE_FORCE_INLINE void bool_cvar_reset(bool_cvar_t* cVar)                   { cVar->current = cVar->reset; }
+CORE_FORCE_INLINE void bool_cvar_set_reset(bool_cvar_t* cVar, bool inVal)   { cVar->reset = inVal; }
+CORE_FORCE_INLINE void bool_cvar_reset_to_default(bool_cvar_t* cVar)        { cVar->current = cVar->reset; };
 
-i32_cvar_t *i32_cvar_create(const char* name, CVarLoadType loadType, int32_t defaultValue, int32_t min, int32_t max);
+i32_cvar_t* i32_cvar_create(const char* name, CVarLoadType loadType, int32_t defaultValue, int32_t min, int32_t max);
 CORE_FORCE_INLINE int32_t i32_cvar_get(i32_cvar_t* cVar)                    { return cVar->current; };
 CORE_FORCE_INLINE void i32_cvar_set(i32_cvar_t* cVar, int32_t inVal)        { cVar->current = clamp_i32( inVal, cVar->min, cVar->max ); }
 CORE_FORCE_INLINE void i32_cvar_reset(i32_cvar_t* cVar)                     { cVar->current = cVar->reset; }
 CORE_FORCE_INLINE void i32_cvar_set_reset(i32_cvar_t* cVar, int32_t inVal)  { cVar->reset = clamp_i32( inVal, cVar->min, cVar->max ); }
 CORE_FORCE_INLINE void i32_cvar_reset_to_default(i32_cvar_t* cVar)          { cVar->current = cVar->reset; };
+
+u32_cvar_t* u32_cvar_create(const char* name, CVarLoadType loadType, uint32_t defaultValue, uint32_t min, uint32_t max);
+CORE_FORCE_INLINE uint32_t u32_cvar_get(u32_cvar_t* cVar)                   { return cVar->current; };
+CORE_FORCE_INLINE void u32_cvar_set(u32_cvar_t* cVar, uint32_t inVal)       { cVar->current = clamp_u32(inVal, cVar->min, cVar->max); }
+CORE_FORCE_INLINE void u32_cvar_reset(u32_cvar_t* cVar)                     { cVar->current = cVar->reset; }
+CORE_FORCE_INLINE void u32_cvar_set_reset(u32_cvar_t* cVar, uint32_t inVal) { cVar->reset = clamp_u32(inVal, cVar->min, cVar->max); }
+CORE_FORCE_INLINE void u32_cvar_reset_to_default(u32_cvar_t* cVar)          { cVar->current = cVar->reset; };
+
 
 void cvar_serialise_disk_vars();
 //=============================================================================

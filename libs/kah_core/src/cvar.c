@@ -23,12 +23,17 @@ struct bool_cvarPair { char key[CVAR_NAME_SIZE + 1]; struct bool_cvarDesc value;
 struct i32_cvarDesc { i32_cvar_t cvar; CVarLoadType loadType; } typedef i32_cvarDesc;
 struct i32_cvarPair { char key[CVAR_NAME_SIZE + 1]; struct i32_cvarDesc value; } typedef i32_cvarPair; //TODO: replace key with cvar name hash.
 
-constexpr size_t CVAR_INT32_ENTRY_COUNT = 128;
-constexpr size_t CVAR_BOOL8_ENTRY_COUNT = 128;
+struct u32_cvarDesc { u32_cvar_t cvar; CVarLoadType loadType; } typedef u32_cvarDesc;
+struct u32_cvarPair { char key[CVAR_NAME_SIZE + 1]; struct u32_cvarDesc value; } typedef u32_cvarPair; //TODO: replace key with cvar name hash.
+
+constexpr size_t CVAR_BOOL8_ENTRY_COUNT = 32;
+constexpr size_t CVAR_INT32_ENTRY_COUNT = 32;
+constexpr size_t CVAR_UINT32_ENTRY_COUNT = 32;
 
 struct CVarTables {
-    struct { bool_cvarPair table[CVAR_BOOL8_ENTRY_COUNT]; uint32_t count; } b8;
-    struct { i32_cvarPair table[CVAR_INT32_ENTRY_COUNT]; uint32_t count; } i32;
+    struct { bool_cvarPair table[CVAR_BOOL8_ENTRY_COUNT];  uint32_t count; } b8;
+    struct { i32_cvarPair  table[CVAR_INT32_ENTRY_COUNT];  uint32_t count; } i32;
+    struct { u32_cvarPair  table[CVAR_UINT32_ENTRY_COUNT]; uint32_t count; } u32;
 
     uint32_t totalCount;
 }typedef CVarTables;
@@ -63,6 +68,18 @@ static i32_cvarPair* i32_cvar_get_entry(const char* name){
     return out;
 }
 
+
+static u32_cvarPair* u32_cvar_get_entry(const char* name) {
+    u32_cvarPair* out = &s_cVarTables.u32.table[s_cVarTables.u32.count++];
+#if KAH_DEBUG
+    for (uint32_t i = 0; i < s_cVarTables.u32.count; ++i) {
+        core_assert(!c_str_equal(name, s_cVarTables.u32.table[i].key));
+    }
+#endif
+    snprintf(out->key, CVAR_NAME_SIZE, "%s", name);
+    return out;
+}
+
 static uint32_t search_str_table_for_cvar(const char* name){
     for (uint32_t i = 0; i < s_stringTable.rowCount; ++i){
         const char* dvarName = str_table_get_cell(&s_stringTable, i, 0);
@@ -75,15 +92,6 @@ static uint32_t search_str_table_for_cvar(const char* name){
 //=============================================================================
 
 //===INTERNAL_SERIALISE========================================================
-static void cvar_serialise_disk_vars_i32(FILE* fp) {
-    for (uint32_t i = 0; i < s_cVarTables.i32.count; i++) {
-        i32_cvarPair* cvarEntry = &s_cVarTables.i32.table[i];
-        if (cvarEntry->value.loadType == C_VAR_DISK) {
-            fprintf(fp, "%s,%d\n", s_cVarTables.i32.table[i].key, cvarEntry->value.cvar.current);
-        }
-    }
-}
-
 static void cvar_serialise_disk_vars_bool(FILE* fp) {
     for (uint32_t i = 0; i < s_cVarTables.b8.count; i++) {
         bool_cvarPair* cvarEntry = &s_cVarTables.b8.table[i];
@@ -92,6 +100,25 @@ static void cvar_serialise_disk_vars_bool(FILE* fp) {
         }
     }
 }
+
+static void cvar_serialise_disk_vars_i32(FILE* fp) {
+    for (uint32_t i = 0; i < s_cVarTables.i32.count; i++) {
+        i32_cvarPair* cvarEntry = &s_cVarTables.i32.table[i];
+        if (cvarEntry->value.loadType == C_VAR_DISK) {
+            fprintf(fp, "%s,%i\n", s_cVarTables.i32.table[i].key, cvarEntry->value.cvar.current);
+        }
+    }
+}
+
+static void cvar_serialise_disk_vars_u32(FILE* fp) {
+    for (uint32_t i = 0; i < s_cVarTables.u32.count; i++) {
+        u32_cvarPair* cvarEntry = &s_cVarTables.u32.table[i];
+        if (cvarEntry->value.loadType == C_VAR_DISK) {
+            fprintf(fp, "%s,%u\n", s_cVarTables.u32.table[i].key, cvarEntry->value.cvar.current);
+        }
+    }
+}
+
 //=============================================================================
 
 //===API=======================================================================
@@ -101,6 +128,7 @@ void cvar_serialise_disk_vars() {
         core_assert(fp);
         cvar_serialise_disk_vars_bool(fp);
         cvar_serialise_disk_vars_i32(fp);
+        cvar_serialise_disk_vars_u32(fp);
     }
     fclose(fp);
 }
@@ -136,6 +164,25 @@ i32_cvar_t *i32_cvar_create(const char* name, CVarLoadType loadType, int32_t def
         const uint32_t rowIndex = search_str_table_for_cvar(name); //TODO: replace with hash lookup.
         if(rowIndex != UINT32_MAX){
             const int32_t current = clamp_i32(atoi(str_table_get_cell(&s_stringTable, rowIndex, 1)), min, max);
+            tableEntry->value.cvar.current = current;
+            tableEntry->value.cvar.reset = tableEntry->value.cvar.current;
+        }
+    }
+    return &tableEntry->value.cvar;
+}
+
+u32_cvar_t* u32_cvar_create(const char* name, CVarLoadType loadType, uint32_t defaultValue, uint32_t min, uint32_t max) {
+    core_assert(strlen(name) < (sizeof(char) * CVAR_NAME_SIZE));
+    u32_cvarPair* tableEntry = u32_cvar_get_entry(name);
+    tableEntry->value = (u32_cvarDesc){
+        .cvar = (u32_cvar_t){.current = defaultValue, .reset = defaultValue, .fallback = defaultValue, .min = min, .max = max },
+        .loadType = loadType
+    };
+
+    if (loadType == C_VAR_DISK && s_diskCVars != nullptr) {
+        const uint32_t rowIndex = search_str_table_for_cvar(name); //TODO: replace with hash lookup.
+        if (rowIndex != UINT32_MAX) {
+            const uint32_t current = clamp_u32(strtoul(str_table_get_cell(&s_stringTable, rowIndex, 1), NULL, 10), min, max);
             tableEntry->value.cvar.current = current;
             tableEntry->value.cvar.reset = tableEntry->value.cvar.current;
         }

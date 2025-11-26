@@ -21,11 +21,13 @@
 i32_cvar_t* core_windowX = nullptr;
 i32_cvar_t* core_windowY = nullptr;
 bool_cvar_t* core_vSyncEnabled = nullptr;
+u32_cvar_t* core_u32Test = nullptr;
 
 void cvar_register(){
     core_windowX = i32_cvar_create("windowSizeX", C_VAR_DISK, 1024, 0, INT32_MAX);
     core_windowY = i32_cvar_create("windowSizeY", C_VAR_DISK, 768, 0, INT32_MAX);
     core_vSyncEnabled = bool_cvar_create("vSyncEnabled", C_VAR_DISK, true); 
+    core_u32Test = u32_cvar_create("cvarTestU32", C_VAR_DISK, UINT32_MAX, 0, UINT32_MAX);
 }
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)

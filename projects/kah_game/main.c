@@ -22,12 +22,20 @@ i32_cvar_t* core_windowX = nullptr;
 i32_cvar_t* core_windowY = nullptr;
 bool_cvar_t* core_vSyncEnabled = nullptr;
 u32_cvar_t* core_u32Test = nullptr;
+f32_cvar_t* core_f32Test = nullptr;
+vec2i_cvar_t* core_vec2iTest = nullptr;
 
 void cvar_register(){
-    core_windowX = i32_cvar_create("windowSizeX", C_VAR_DISK, 1024, 0, INT32_MAX);
-    core_windowY = i32_cvar_create("windowSizeY", C_VAR_DISK, 768, 0, INT32_MAX);
+    core_windowX = i32_cvar_create("windowSizeX", C_VAR_DISK, 1024, 128, INT32_MAX);
+    core_windowY = i32_cvar_create("windowSizeY", C_VAR_DISK, 768, 128, INT32_MAX);
     core_vSyncEnabled = bool_cvar_create("vSyncEnabled", C_VAR_DISK, true); 
     core_u32Test = u32_cvar_create("cvarTestU32", C_VAR_DISK, UINT32_MAX, 0, UINT32_MAX);
+    core_f32Test = f32_cvar_create("cvarTestF32", C_VAR_DISK, 14.125, 0, 1000.0f);
+    core_vec2iTest = vec2i_cvar_create("cvarTestVec2i32", C_VAR_DISK, (vec2i) { .x = 1024, .y = 768 }, (vec2i) { .x = 0, .y = 0 }, (vec2i) { .x = INT32_MAX, .y = INT32_MAX });
+
+    printf("%u\n", u32_cvar_get(core_u32Test));
+    printf("%f\n", f32_cvar_get(core_f32Test));
+    printf("%i , %i\n", vec2i_cvar_get(core_vec2iTest).x, vec2i_cvar_get(core_vec2iTest).y);
 }
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
@@ -48,7 +56,7 @@ int main(int argc, char** argv)
     {
         cvar_create("options.csv");
         cvar_register();
-        window_create("kah engine - runtime", (vec2i){ i32_cvar_get(core_windowX), i32_cvar_get(core_windowY) }, KAH_WINDOW_POSITION_CENTERED);
+        window_create("kah engine - runtime", (vec2i){ .x = i32_cvar_get(core_windowX), .y = i32_cvar_get(core_windowY) }, KAH_WINDOW_POSITION_CENTERED);
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
         window_set_procedure_callback_func(gfx_imgui_get_proc_function_pointer());
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)

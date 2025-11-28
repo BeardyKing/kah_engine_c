@@ -3,6 +3,7 @@
 
 //===INCLUDES==================================================================
 #include <kah_math/defines.h>
+#include <kah_math/vec2.h>
 
 #include <stdint.h>
 //=============================================================================
@@ -46,9 +47,10 @@ MATH_FORCE_INLINE uint16_t clamp_u16(uint16_t value, uint16_t min, uint16_t max)
 MATH_FORCE_INLINE uint32_t clamp_u32(uint32_t value, uint32_t min, uint32_t max) { return (value < min) ? min : (value > max) ? max : value; }
 MATH_FORCE_INLINE uint64_t clamp_u64(uint64_t value, uint64_t min, uint64_t max) { return (value < min) ? min : (value > max) ? max : value; }
 
-MATH_FORCE_INLINE float   clamp_f32(float value, float min, float max)       { return (value < min) ? min : (value > max) ? max : value; }
-MATH_FORCE_INLINE double  clamp_f64(double value, double min, double max)    { return (value < min) ? min : (value > max) ? max : value; }
+MATH_FORCE_INLINE float   clamp_f32(float value, float min, float max)           { return (value < min) ? min : (value > max) ? max : value; }
+MATH_FORCE_INLINE double  clamp_f64(double value, double min, double max)        { return (value < min) ? min : (value > max) ? max : value; }
 
+MATH_FORCE_INLINE vec2i   clamp_vec2i(vec2i value, vec2i min, vec2i max)         { return (vec2i) { .x = clamp_i32(value.x, min.x, max.x), .y = clamp_i32(value.y, min.y, max.y) }; }
 
 float as_degrees_f(float radians);
 float as_radians_f(float degrees);

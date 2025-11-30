@@ -1063,11 +1063,11 @@ static void gfx_end_command_recording(const VkCommandBuffer cmdBuffer) {
 static bool gfx_window_resize() {
     gfx_flush();
 
-    gfx_task_graph_cleanup();
+    gfx_task_graph_cleanup(false);
     gfx_swap_chain_cleanup();
 
     gfx_swap_chain_create();
-    gfx_task_graph_create();
+    gfx_task_graph_create(false);
     s_gfx.windowNeedsResize = false;
     return true;
 }
@@ -1409,7 +1409,7 @@ void gfx_create(void* windowHandle){
     gfx_swap_chain_create();
     gfx_command_buffers_create();
     gfx_fences_create();
-    gfx_task_graph_create();
+    gfx_task_graph_create(true);
     gfx_pipeline_cache_create();
     gfx_bindless_create();
 
@@ -1433,7 +1433,7 @@ void gfx_cleanup(){
 
     gfx_bindless_cleanup();
     gfx_pipeline_cache_cleanup();
-    gfx_task_graph_cleanup();
+    gfx_task_graph_cleanup(true);
     gfx_fences_cleanup();
     gfx_command_buffers_cleanup();
     gfx_swap_chain_cleanup();

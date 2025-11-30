@@ -497,8 +497,10 @@ static void gfx_resources_cleanup(){
     s_resources = (struct TaskGraphResourceInfoHandles){};
 }
 
-void gfx_task_graph_create(){
-    if(!s_tgArenasAllocated){
+void gfx_task_graph_create(bool fullCreate){
+    
+    if(fullCreate){
+        core_assert(!s_tgArenasAllocated);
         s_tgRenderPassArena.alloc = allocators()->cstd.alloc(1 * KAH_KiB);
         s_tgResourceArena.alloc = allocators()->cstd.alloc(1 * KAH_KiB);
         s_tgArenasAllocated = true;
@@ -510,12 +512,15 @@ void gfx_task_graph_create(){
     gfx_resources_create();
 }
 
-void gfx_task_graph_cleanup(){
+void gfx_task_graph_cleanup(bool fullCleanup){
     gfx_resources_cleanup();
-    allocators()->cstd.free(s_tgRenderPassArena.alloc);
-    allocators()->cstd.free(s_tgResourceArena.alloc);
+    if (fullCleanup) {
+        core_assert(s_tgArenasAllocated);
+        allocators()->cstd.free(s_tgRenderPassArena.alloc);
+        allocators()->cstd.free(s_tgResourceArena.alloc);
+        s_tgArenasAllocated = false;
+    }
     s_tgRenderPassArena.count = 0;
     s_tgResourceArena.count = 0;
-    s_tgArenasAllocated = false;
 }
 //=============================================================================

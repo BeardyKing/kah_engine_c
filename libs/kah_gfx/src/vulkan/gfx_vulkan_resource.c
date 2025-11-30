@@ -14,6 +14,7 @@ extern GlobalGfx g_gfx;
 static void gfx_image_free(GfxImage* image){
     vmaDestroyImage(g_gfx.allocator, image->image, image->alloc);
     vkDestroyImageView(g_gfx.device, image->view, g_gfx.allocationCallbacks);
+    *image = (GfxImage){};
 }
 //=============================================================================
 
@@ -149,5 +150,6 @@ uint32_t gfx_resource_create_type(GfxResourceType type, GfxAttachmentInfo* info)
 
 void gfx_resource_image_release(GfxImageHandle gfxHandle){
     gfx_image_free(gfx_pool_get_gfx_image(gfxHandle));
+    gfx_pool_release_gfx_image(gfxHandle);
 }
 //=============================================================================

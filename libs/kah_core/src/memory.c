@@ -198,7 +198,11 @@ AllocInfo* mem_cstd_alloc(size_t inBufferSize){
 }
 
 void mem_cstd_free(AllocInfo* allocInfo){
-    core_assert(allocInfo != nullptr);
+    if(!allocInfo || !allocInfo->bufferAddress){
+        core_assert_msg(false, "err: invalid AllocInfo or already freed");
+        return;
+    }
+
     const uint32_t tableIndex = alloc_info_find_index(allocInfo);
     if(tableIndex == ALLOC_TABLE_INVALID_INDEX){
         core_assert_msg(false, "err: could not find alloc info in table");

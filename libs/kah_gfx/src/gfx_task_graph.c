@@ -516,5 +516,6 @@ void gfx_task_graph_cleanup(){
     allocators()->cstd.free(s_tgResourceArena.alloc);
     s_tgRenderPassArena.count = 0;
     s_tgResourceArena.count = 0;
+    s_tgArenasAllocated = false;
 }
 //=============================================================================

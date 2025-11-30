@@ -2,6 +2,15 @@ project(kah_game C)
 
 add_executable(kah_game
         main.c
+
+        inc/client/widgets/widget_manager.h
+        src/widgets/widget_manager.c
+)
+
+
+target_include_directories(kah_core
+        PUBLIC inc
+        PRIVATE inc/client
 )
 
 if(DEFINED EXECUTABLE_SUFFIX)

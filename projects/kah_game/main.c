@@ -1,9 +1,10 @@
 //===INCLUDES==================================================================
+#include <client/widgets/widget_manager.h>
+
 #include <kah_core/defines.h>
 #include <kah_core/allocators.h>
 #include <kah_core/assert.h>
 #include <kah_core/memory.h>
-#include <kah_core/fixed_array.h>
 #include <kah_core/input.h>
 #include <kah_core/time.h>
 #include <kah_core/window.h>
@@ -14,42 +15,7 @@
 
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
-
-#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
-#include <dcimgui.h>
-#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
-
-#include <stdint.h>
-#include <string.h>
 //=============================================================================
-
-#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
-static void client_cvar_debug_vec2i(const char* varName, vec2i_cvar_t* cvar) {
-    bool showCvarWindow = true;
-    ImGui_Begin("cvar debug display", &showCvarWindow, ImGuiWindowFlags_None);
-    {
-        if(ImGui_CollapsingHeader(varName, ImGuiTreeNodeFlags_None))
-        {
-            ImGui_Text("min (%i , %i)", cvar->min.x, cvar->min.y);
-            ImGui_Text("max (%i , %i)", cvar->max.x, cvar->max.y);
-            char textBuf[128] = {};
-            sprintf_s(textBuf, 128, "##cvar_current_x_%s", varName);
-            ImGui_DragIntEx(textBuf, &cvar->current.x, 1, cvar->min.x, cvar->max.x, "%i", ImGuiSliderFlags_AlwaysClamp);
-            sprintf_s(textBuf, 128, "##cvar_current_y_%s", varName);
-            ImGui_DragIntEx(textBuf, &cvar->current.y, 1, cvar->min.y, cvar->max.y, "%i", ImGuiSliderFlags_AlwaysClamp);
-        }
-    }
-    ImGui_End();
-}
-
-void imgui_update() {
-    gfx_imgui_begin();
-    if(gfx_has_drawable_surface()){
-        gfx_imgui_demo_window();
-        //Client side imgui code must run based on has gfx_has_drawable_surface test.
-    }
-}
-#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
 int main(int argc, char** argv)
 {
@@ -59,6 +25,7 @@ int main(int argc, char** argv)
     {
         cvar_create("options.csv");
         core_cvars_register();
+        widget_manager_create();
         window_create("kah engine - runtime", vec2i_cvar_get(g_coreCvars.windowSize), vec2i_cvar_get(g_coreCvars.windowPosition));
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
         window_set_procedure_callback_func(gfx_imgui_get_proc_function_pointer());
@@ -74,9 +41,8 @@ int main(int argc, char** argv)
             window_update();
             input_update();
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
-            imgui_update();
-            client_cvar_debug_vec2i("windowSize", g_coreCvars.windowSize);
-            client_cvar_debug_vec2i("windowPosition", g_coreCvars.windowPosition);
+            gfx_imgui_begin();
+            widget_manager_update();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
             gfx_update();
         }

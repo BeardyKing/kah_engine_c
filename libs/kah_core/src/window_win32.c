@@ -7,6 +7,8 @@
 #include <kah_core/window.h>
 #include <kah_core/input.h>
 #include <kah_core/input_types.h>
+#include <kah_core/core_cvars.h>
+
 #include <kah_math/vec2.h>
 
 #ifndef UNICODE
@@ -58,16 +60,19 @@ static LRESULT CALLBACK window_procedure_callback(HWND hwnd, UINT uMsg, WPARAM w
             ValidateRect(hwnd, nullptr);
             break;
         };
-        case WM_SIZE: {
-            s_windowInfo.width = LOWORD(lParam);
-            s_windowInfo.height = HIWORD(lParam);
-            break;
-        }
+        case WM_SIZE:
         case WM_MOVE: {
-            s_windowInfo.posX = (int32_t) (short) LOWORD(lParam);
-            s_windowInfo.posY = (int32_t) (short) HIWORD(lParam);
+            RECT rect = (RECT){};
+            GetWindowRect(hwnd, &rect);
+            s_windowInfo.posX = rect.left;
+            s_windowInfo.posY = rect.top;
+            s_windowInfo.width = rect.right - rect.left;
+            s_windowInfo.height = rect.bottom - rect.top;
+            vec2i_cvar_set(g_coreCvars.windowPosition, (vec2i) { .x = s_windowInfo.posX, .y = s_windowInfo.posY });
+            vec2i_cvar_set(g_coreCvars.windowSize, (vec2i) { .x = s_windowInfo.width, .y = s_windowInfo.height });
             break;
         }
+
         case WM_MOUSELEAVE: {
             s_windowInfo.cursorOverWindow = false;
             break;
@@ -225,12 +230,23 @@ static void window_poll() {
         DispatchMessage(&msg);
     }
 }
+
+static void window_update_pos_size() {
+    vec2i cvarPos = vec2i_cvar_get(g_coreCvars.windowPosition);
+    vec2i cvarSize = vec2i_cvar_get(g_coreCvars.windowSize);
+    bool samePos = vec2i_equal(cvarPos, (vec2i) { .x = s_windowInfo.posX, .y = s_windowInfo.posY });
+    bool sameSize = vec2i_equal(cvarSize, (vec2i) { .x = s_windowInfo.width, .y = s_windowInfo.height });
+    if ( !samePos || !sameSize ) {
+        SetWindowPos(s_windowInfo.handle, HWND_TOP, cvarPos.x, cvarPos.y, cvarSize.x, cvarSize.y, SWP_NONE);
+    }
+}
 //=============================================================================
 
 //===API=======================================================================
 void window_update() {
     window_poll();
     update_cursor_state();
+    window_update_pos_size();
 }
 
 bool window_is_open() {
@@ -299,7 +315,7 @@ void window_create(const char* windowTitle, const vec2i windowSize, const vec2i 
     core_assert(strlen(windowTitle) < KAH_MAX_WINDOW_TITLE_SIZE);
     int32_t screenX = windowPosition.x;
     int32_t screenY = windowPosition.y;
-    if (windowPosition.x == (int32_t)0xffffffff || windowPosition.y == (int32_t)0xffffffff) {
+    if (windowPosition.x == INT32_MAX || windowPosition.y == INT32_MAX) {
         screenX = GetSystemMetrics(SM_CXSCREEN) / 2 - (windowSize.x / 2);
         screenY = GetSystemMetrics(SM_CYSCREEN) / 2 - (windowSize.y / 2);
     }
@@ -317,7 +333,7 @@ void window_create(const char* windowTitle, const vec2i windowSize, const vec2i 
                 .hInstance = hInstance,
                 .hIcon = LoadIcon(nullptr, IDI_APPLICATION),
                 .hCursor = LoadCursor(nullptr, IDC_ARROW),
-                .hbrBackground = (HBRUSH)COLOR_BACKGROUND,
+                //.hbrBackground = ,
                 // .lpszMenuName = ,
                 .lpszClassName = L"KAH_WINDOW_APPLICATION_NAME",
                 // .hIconSm =

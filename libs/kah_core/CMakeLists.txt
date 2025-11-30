@@ -41,6 +41,8 @@ add_library(kah_core
         src/file_io.c
         inc/kah_core/cvar.h
         src/cvar.c
+        inc/kah_core/core_cvars.h
+        src/core_cvars.c
 )
 
 target_include_directories(kah_core

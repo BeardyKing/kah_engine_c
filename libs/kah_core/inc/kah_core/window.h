@@ -9,7 +9,7 @@
 //=============================================================================
 
 #define KAH_MAX_WINDOW_TITLE_SIZE 256
-#define KAH_WINDOW_POSITION_CENTERED (vec2i){.x = 0xFFFFFFFF, .y = 0xFFFFFFFF}
+#define KAH_WINDOW_POSITION_CENTERED (vec2i){ .x = INT32_MAX, .y = INT32_MAX }
 
 //===API=======================================================================
 bool  window_is_open();

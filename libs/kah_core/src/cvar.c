@@ -112,8 +112,8 @@ static vec2i_cvarPair* vec2i_cvar_get_entry(const char* name) {
 
 static uint32_t search_str_table_for_cvar(const char* name){
     for (uint32_t i = 0; i < s_stringTable.rowCount; ++i){
-        const char* dvarName = str_table_get_cell(&s_stringTable, i, 0);
-        if(c_str_equal(dvarName, name)){
+        const char* cvarName = str_table_get_cell(&s_stringTable, i, 0);
+        if(c_str_equal(cvarName, name)){
             return i;
         }
     }

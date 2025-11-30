@@ -2,7 +2,10 @@
 #define VEC2_H
 
 //===INCLUDES==================================================================
+#include <kah_math/defines.h>
+
 #include <stdint.h>
+#include <stdbool.h>
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -27,5 +30,6 @@ union vec2d{
 }typedef vec2d;
 //=============================================================================
 
+MATH_FORCE_INLINE bool vec2i_equal(vec2i lhs, vec2i rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 
 #endif //VEC2_H

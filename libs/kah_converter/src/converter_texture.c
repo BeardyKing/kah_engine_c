@@ -41,7 +41,7 @@ bool convert_texture_dds(const char *localAssetDir, const char *inFileFormat, co
     snprintf(inPath, sizeof(inPath), "%s%s%s", g_converterLocations.rawAssetDir, localAssetDir, inFileFormat);
     snprintf(outPath, sizeof(outPath), "%s%s.dds", g_converterLocations.targetAssetDir, localAssetDir);
 
-    fs_mkdir_recursive(outPath);
+    fs_dir_make_recursive(outPath);
 
     if (!fs_file_exists(inPath)) {
         printf("no file at path: %s \n", inPath);

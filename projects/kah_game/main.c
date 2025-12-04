@@ -51,6 +51,7 @@ int main(int argc, char** argv)
         input_cleanup();
         time_cleanup();
         window_cleanup();
+        widget_manager_cleanup();
         cvar_cleanup();
     }
     allocator_cleanup();

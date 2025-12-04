@@ -18,7 +18,7 @@ bool convert_shader_spv(const char *localAssetDir) {
     snprintf(inPath, sizeof(inPath), "%s%s", g_converterLocations.rawAssetDir, localAssetDir);
     snprintf(outPath, sizeof(outPath), "%s%s", g_converterLocations.targetAssetDir, localAssetDir);
 
-    fs_mkdir_recursive(outPath);
+    fs_dir_make_recursive(outPath);
 
     if (!fs_file_exists(inPath)) {
         return false;

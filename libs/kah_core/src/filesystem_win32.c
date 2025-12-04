@@ -5,16 +5,19 @@
 #include <kah_core/filesystem.h>
 #include <kah_core/c_string.h>
 
+#include <windows.h>
+#include <tchar.h>
+#include <strsafe.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <direct.h>
 
 //===API=======================================================================
-bool fs_mkdir(const char *path) {
+bool fs_dir_make(const char *path) {
     return (_mkdir(path) == 0);
 }
 
-bool fs_rmdir(const char *path) {
+bool fs_dir_remove(const char *path) {
     return (_rmdir(path) == 0);
 }
 
@@ -36,28 +39,28 @@ static bool fs_mkdir_recursive_internal(const char path[KAH_FILESYSTEM_MAX_PATH]
     memcpy(currPath, path, KAH_FILESYSTEM_RECURSIVE_MAX_CPY_SIZE);
 
     char *delimLocation = strrchr(currPath, '/');
-    if (!fs_file_exists(currPath) && delimLocation != nullptr) {
+    if (!fs_file_exists(currPath) && delimLocation != NULL) {
         *delimLocation = '\0';
         fs_mkdir_recursive_internal(currPath);
     } else {
         return false;
     }
 
-    return fs_mkdir(currPath);
+    return fs_dir_make(currPath);
 }
 
 //Note: This function can either take in a file path or a directory path
 //      When using a directory path you MUST include a trailing '/'
-bool fs_mkdir_recursive(const char* path) {
+bool fs_dir_make_recursive(const char* path) {
     if (c_str_empty(path)) {
         return false;
     }
     return fs_mkdir_recursive_internal(path);
-}
+}           
 
 bool fs_file_is_absolute(const char *inPath) {
     const size_t pathLength = strlen(inPath);
-    if (inPath == nullptr || pathLength == 0) {
+    if (inPath == NULL || pathLength == 0) {
         return false;
     }
 
@@ -69,6 +72,73 @@ bool fs_file_is_absolute(const char *inPath) {
     }
 
     return false;
+}
+
+int32_t fs_dir_file_count(const char* inPath) {
+    if (inPath == NULL || strlen(inPath) > MAX_PATH - 3) {
+        return KAH_FILESYSTEM_INVALID;
+    }
+
+    int32_t outFileCount = 0;
+
+    TCHAR szDir[MAX_PATH];
+    StringCchCopy(szDir, MAX_PATH, inPath);
+    StringCchCat(szDir, MAX_PATH, TEXT("\\*"));
+
+    WIN32_FIND_DATA ffd;
+    HANDLE hFind = FindFirstFile(szDir, &ffd);
+    {
+        [[maybe_unused]] int32_t directoryCount = 0;
+        if (INVALID_HANDLE_VALUE == hFind) {
+            return KAH_FILESYSTEM_INVALID;
+        }
+
+        do {
+            if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                directoryCount++;
+            }
+            else {
+                outFileCount++;
+            }
+        } while (FindNextFile(hFind, &ffd) != 0);
+    }
+    FindClose(hFind);
+
+    return outFileCount;
+}
+
+bool fs_dir_get_filenames(const char* inPath, char* inOutBuffer, const int32_t inFileCount) {
+    if (inOutBuffer == NULL || inFileCount == 0) {
+        return false;
+    }
+
+    TCHAR szDir[MAX_PATH];
+    StringCchCopy(szDir, MAX_PATH, inPath);
+    StringCchCat(szDir, MAX_PATH, TEXT("\\*"));
+
+    WIN32_FIND_DATA ffd;
+    HANDLE hFind = FindFirstFile(szDir, &ffd);
+    {
+        if (INVALID_HANDLE_VALUE == hFind) {
+            return KAH_FILESYSTEM_INVALID;
+        }
+
+        int32_t fileCount = 0;
+        do {
+            if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                memcpy(inOutBuffer + (sizeof(char) * fileCount * MAX_PATH), ffd.cFileName, MAX_PATH);
+                fileCount++;
+
+                if (fileCount > inFileCount) {
+                    memset(inOutBuffer, 0, inFileCount * (sizeof(char) * fileCount * MAX_PATH));
+                    return false;
+                }
+            }
+        } while (FindNextFile(hFind, &ffd) != 0);
+    }
+    FindClose(hFind);
+
+    return true;
 }
 //=============================================================================
 

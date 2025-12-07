@@ -12,6 +12,7 @@
 #include <kah_core/memory.h>
 #include <kah_core/c_string.h>
 #include <kah_core/defines.h>
+#include <kah_core/filesystem.h>
 
 #include <string.h>
 
@@ -204,7 +205,9 @@ GfxTextureHandle gfx_texture_load_from_file( const char* path ){
 
     if(c_str_equal(ext, ".dds")){
 #if CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
-        gfx_convert_texture_dds((char*)path);
+        if (!fs_file_is_absolute(path)){
+            gfx_convert_texture_dds((char*)path);
+        }
 #endif //CHECK_FEATURE(FEATURE_CONVERT_ON_DEMAND)
         load_dds_image_alloc(allocators()->cstd, path, &rawImage);
     }

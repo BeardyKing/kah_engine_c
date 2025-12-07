@@ -13,6 +13,8 @@
 //===API=======================================================================
 void gfx_bindless_set_sampler(uint32_t samplerIndex, VkSampler sampler);
 void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView);
+
+VkSampler gfx_get_sampler_linear();
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================

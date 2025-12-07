@@ -181,6 +181,10 @@ void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView){
     };
     vkUpdateDescriptorSets(g_gfx.device, 1, &writeSet, 0, nullptr);
 }
+
+VkSampler gfx_get_sampler_linear(){
+    return s_gfxBindless.samplers.linear;
+}
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================

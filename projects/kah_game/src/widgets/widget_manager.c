@@ -1,9 +1,11 @@
+
 #ifndef WINDGET_MANAGER_C_H
 #define WINDGET_MANAGER_C_H
 
 //===INCLUDES==================================================================
 #include <client/widgets/widget_manager.h>
 
+#include <kah_core/assert.h>
 #include <kah_core/allocators.h>
 #include <kah_core/c_string.h>
 #include <kah_core/core_cvars.h>
@@ -11,9 +13,14 @@
 #include <kah_core/filesystem.h>
 
 #include <kah_gfx/gfx_interface.h>
+#include <kah_gfx/gfx_pool.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
+#include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
+#include <kah_gfx/vulkan/gfx_vulkan_texture.h>
+#include <kah_gfx/vulkan/gfx_vulkan_types.h>
 
 #include <dcimgui.h>
+#include <dcimgui_impl_vulkan.h>
 
 #include <stdio.h>
 //=============================================================================
@@ -43,7 +50,15 @@ struct DiffSelectionCtx {
     int32_t dirFileCount;
     AllocInfo* fileNames;
     int32_t selectedFileIndex;
+    GfxTextureHandle loadedTextureHandle;
+    ImTextureRef imguiImageId;
     bool hasRun;
+    struct {
+        bool active;
+        int counter;
+        GfxTextureHandle loadedTextureHandle;
+        ImTextureRef imguiImageId;
+    }deferRelease;
 } typedef DiffSelectionCtx;
 
 static DiffSelectionCtx s_diffImageCtxA = {};
@@ -135,7 +150,6 @@ static void widget_image_diff_selection(DiffSelectionCtx* diffCtx){
             }
             diffCtx->fileNames = allocators()->cstd.alloc(diffCtx->dirFileCount * (sizeof(char) * KAH_FILESYSTEM_MAX_PATH + 1));
             fs_dir_get_filenames((const char*)& diffCtx->dirPath[0], (char*)diffCtx->fileNames->bufferAddress, diffCtx->dirFileCount);
-
         }
     }
 
@@ -153,13 +167,55 @@ static void widget_image_diff_selection(DiffSelectionCtx* diffCtx){
                 ImGui_TableNextRow();
                 ImGui_TableSetColumnIndex(0);
 
-                const char* fileName = (const char*)&diffCtx->fileNames->bufferAddress[sizeof(char) * i * KAH_FILESYSTEM_MAX_PATH];
+                const char* fileName = &((const char*)diffCtx->fileNames->bufferAddress)[sizeof(char) * i * KAH_FILESYSTEM_MAX_PATH];
+                bool foundValidExt = c_str_search_reverse((char*)fileName, ".dds") != NULL;
+                
+                ImVec4 color = foundValidExt ? (ImVec4){ 0.2f, 1.0f, 0.2f, 1.0f } : (ImVec4){ 1.0f, 0.2f, 0.2f, 1.0f }; 
+                ImGui_PushStyleColorImVec4(ImGuiCol_Text, color);
+
                 bool isSelected = (diffCtx->selectedFileIndex == (int)i);
-                if (ImGui_SelectableEx(fileName, isSelected, ImGuiSelectableFlags_SpanAllColumns, (ImVec2) { .x = 0, .y = 0 })) {
-                    diffCtx->selectedFileIndex = (int)i;
+                if (ImGui_SelectableEx(fileName, isSelected, ImGuiSelectableFlags_SpanAllColumns, (ImVec2) { .x = 0, .y = 0 })){
+                    if (foundValidExt) {
+                        if(diffCtx->loadedTextureHandle != GFX_POOL_GFX_TEXTURE_COUNT_MAX){
+                            diffCtx->deferRelease.active = true;
+                            diffCtx->deferRelease.counter = KAH_SWAP_CHAIN_IMAGE_COUNT;
+                            diffCtx->deferRelease.loadedTextureHandle = diffCtx->loadedTextureHandle;
+                            diffCtx->deferRelease.imguiImageId = diffCtx->imguiImageId;
+                            diffCtx->loadedTextureHandle = GFX_POOL_GFX_TEXTURE_COUNT_MAX;
+                        }
+                        diffCtx->selectedFileIndex = (int)i;
+                        char texturePath[KAH_FILESYSTEM_MAX_PATH] = {};
+                        sprintf(texturePath, "%s\\%s",diffCtx->dirPath, fileName);
+                        diffCtx->loadedTextureHandle = gfx_texture_load_from_file(texturePath);
+
+                        VkSampler sampler = gfx_get_sampler_linear();
+                        GfxTexture* tex = gfx_pool_get_gfx_texture(diffCtx->loadedTextureHandle);
+                        VkDescriptorSet set = cImGui_ImplVulkan_AddTexture(sampler,tex->imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+                        diffCtx->imguiImageId._TexID = (ImTextureID)set;
+                    }
                 }
+                ImGui_PopStyleColor();
             }
             ImGui_EndTable();
+            if (diffCtx->loadedTextureHandle != GFX_POOL_GFX_TEXTURE_COUNT_MAX) {
+                ImGui_Image(diffCtx->imguiImageId, (ImVec2) { .x = 128, .y = 128 });
+            }
+        }
+    }
+}
+
+static void widget_image_diff_defer_release(DiffSelectionCtx* diffCtx) {
+    //TODO: replace counter with GFX frame index i.e. defer release of images after 1 swapchains worth of frames have passed.
+    if (diffCtx->deferRelease.active) {
+        if (diffCtx->deferRelease.counter == 0) {
+            core_assert(diffCtx->deferRelease.loadedTextureHandle != GFX_POOL_GFX_TEXTURE_COUNT_MAX);
+            diffCtx->deferRelease.active = false;
+            cImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)diffCtx->deferRelease.imguiImageId._TexID);
+            gfx_texture_cleanup(diffCtx->deferRelease.loadedTextureHandle);
+            diffCtx->deferRelease.loadedTextureHandle = GFX_POOL_GFX_TEXTURE_COUNT_MAX;
+        }
+        else {
+            diffCtx->deferRelease.counter--;
         }
     }
 }
@@ -178,15 +234,19 @@ static void widget_image_differ_update(){
 
                 ImGui_EndTable();
             }
-
             ImGui_End();
         }
     }
+
+    widget_image_diff_defer_release(&s_diffImageCtxA);
+    widget_image_diff_defer_release(&s_diffImageCtxB);
 }
 
 static void widget_image_differ_create() {
-    sprintf(s_diffImageCtxA.dirPath, "%s", fs_exe_dir());
-    sprintf(s_diffImageCtxB.dirPath, "%s", fs_exe_dir());
+    sprintf(s_diffImageCtxA.dirPath, "%s/assets/textures/", fs_exe_dir());
+    s_diffImageCtxA.loadedTextureHandle = GFX_POOL_GFX_TEXTURE_COUNT_MAX;
+    sprintf(s_diffImageCtxB.dirPath, "%s/assets/textures/", fs_exe_dir());
+    s_diffImageCtxB.loadedTextureHandle = GFX_POOL_GFX_TEXTURE_COUNT_MAX;
 }
 
 static void widget_image_differ_cleanup() {

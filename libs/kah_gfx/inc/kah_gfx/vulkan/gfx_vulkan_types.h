@@ -73,6 +73,7 @@ enum GfxResourceType : uint8_t{
 
 struct GfxResource{
     GfxResourceType type;
+    bool clear;
     union{
         struct {
             uint32_t binding;

@@ -8,6 +8,10 @@
 static constexpr char GFX_UTIL_NOT_FOUND_STR[] = "NO_ASSOCIATED_NAME";
 //=============================================================================
 
+//===EXTERNAL_STRUCTS==========================================================
+extern GlobalGfx g_gfx;
+//=============================================================================
+
 //===API=======================================================================
 const char* VkImageLayout_c_str( const VkImageLayout imageLayout ){
     switch (imageLayout){
@@ -179,4 +183,20 @@ uint32_t gfx_utils_get_memory_type(VkPhysicalDeviceMemoryProperties deviceMemory
     return UINT32_MAX; // TODO:TEST: validate this is the correct value to return to crash the backend.
 }
 
+VkPipelineLayout vk_pipeline_layout_create(VkDescriptorSetLayout* layouts, uint32_t layoutCount, VkPushConstantRange* pushConstantRanges, uint32_t pushConstantRangeCount){
+    core_assert(layouts != NULL);
+    core_assert(pushConstantRanges != NULL);
+    const VkPipelineLayoutCreateInfo createInfo = (VkPipelineLayoutCreateInfo){
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = layoutCount,
+        .pSetLayouts = &layouts[0],
+        .pushConstantRangeCount = pushConstantRangeCount,
+        .pPushConstantRanges = &pushConstantRanges[0],
+    };
+
+    VkPipelineLayout outLayout;
+    VkResult result = vkCreatePipelineLayout(g_gfx.device, &createInfo, g_gfx.allocationCallbacks, &outLayout);
+    core_assert(result == VK_SUCCESS);
+    return outLayout;
+}
 //=============================================================================

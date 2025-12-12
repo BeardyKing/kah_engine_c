@@ -6,6 +6,8 @@
 #include <kah_gfx/vulkan/gfx_vulkan_resource.h>
 #include <kah_gfx/vulkan/gfx_vulkan_utils.h>
 
+#include <kah_math/utils.h>
+
 #include <kah_core/allocators.h>
 #include <kah_core/assert.h>
 #include <kah_core/utils.h>
@@ -59,6 +61,7 @@ struct PassCtx{
     VkAccessFlagBits acess;
     VkImageLayout layout;
     VkPipelineStageFlagBits stage;
+    bool clear;
 }typedef PassCtx;
 
 struct GfxRenderInfoContext{
@@ -137,23 +140,23 @@ static GfxRenderPass* render_pass_create(const char* renderPassName){
     return outRP;
 }
 
-static VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_stencil(VkImageView imageView){
+static VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_depth_stencil(VkImageView imageView, bool shouldClear){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
         .imageView = imageView,
         .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .clearValue = {.depthStencil = {.depth = 1.0f, .stencil = 0}}, //TODO: Remove.
     };
 }
 
-static VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView){
+static VkRenderingAttachmentInfoKHR gfx_rendering_attachment_info_color(VkImageView imageView, bool shouldClear){
     return (VkRenderingAttachmentInfoKHR){
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
         .imageView = imageView,
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .clearValue = {.color = {{0.5f, 0.092f, 0.167f, 1.0f}},},
     };
@@ -204,6 +207,7 @@ static void gfx_task_graph_build_and_run_barriers(VkCommandBuffer cmdBuffer, con
         const bool accessMatch = info->lastAccess == ctx->acess;
         const bool layoutMatch = info->lastLayout == ctx->layout;
         const bool stageMatch = info->lastStage == ctx->stage;
+
 
         if(accessMatch && layoutMatch && stageMatch){
             continue;
@@ -258,6 +262,7 @@ static void build_render_context_from_info_context(GfxRenderContext* ctx, const 
     for (uint32_t readIndex = 0; readIndex < info->readCount; ++readIndex){
         const uint32_t bindingIndex = info->read[readIndex].binding;
         ctx->read[readIndex] = s_tgPools.gfxResources[info->read[readIndex].handle];
+        ctx->read[readIndex].clear = info->read[readIndex].clear;
 
         if(ctx->read[readIndex].type == GFX_RESOURCE_IMAGE_COLOR ){
             ctx->read[readIndex].data.imageColor.binding = bindingIndex;
@@ -273,6 +278,7 @@ static void build_render_context_from_info_context(GfxRenderContext* ctx, const 
     for (uint32_t writeIndex = 0; writeIndex < info->writeCount; ++writeIndex){
         const uint32_t bindingIndex = info->write[writeIndex].binding;
         ctx->write[writeIndex] = s_tgPools.gfxResources[info->write[writeIndex].handle];
+        ctx->write[writeIndex].clear = info->write[writeIndex].clear;
 
         if(ctx->write[writeIndex].type == GFX_RESOURCE_IMAGE_COLOR ){
             ctx->write[writeIndex].data.imageColor.binding = bindingIndex;
@@ -324,16 +330,18 @@ static void gfx_task_graph_run_graphics(VkCommandBuffer cmdBuffer, const GfxRend
 
     for (uint32_t writeIndex = 0; writeIndex < renderCtx.writeCount; ++writeIndex){
         GfxResourceType type = renderCtx.write[writeIndex].type;
+        const bool shouldClear = renderCtx.write[writeIndex].clear;
+
         if(type == GFX_RESOURCE_IMAGE_COLOR){
             const uint32_t binding = renderCtx.write[writeIndex].data.imageColor.binding;
             core_assert(colorAttachmentsInUse[binding] == false);
-            colorAttachments[binding] = gfx_rendering_attachment_info_color(gfx_pool_get_gfx_image(renderCtx.write[writeIndex].data.imageColor.handle)->view);
+            colorAttachments[binding] = gfx_rendering_attachment_info_color(gfx_pool_get_gfx_image(renderCtx.write[writeIndex].data.imageColor.handle)->view, shouldClear);
             colorAttachmentsInUse[binding] = true;
-            colorAttachmentCount = max(colorAttachmentCount, binding + 1);
+            colorAttachmentCount = max_i32(colorAttachmentCount, binding + 1);
         }
         if(type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL){
             core_assert(depthStencilAttachmentInUse == false);
-            depthStencilAttachment = gfx_rendering_attachment_info_depth_stencil(gfx_pool_get_gfx_image(renderCtx.write[writeIndex].data.imageDepthStencil.handle)->view);
+            depthStencilAttachment = gfx_rendering_attachment_info_depth_stencil(gfx_pool_get_gfx_image(renderCtx.write[writeIndex].data.imageDepthStencil.handle)->view, shouldClear);
             depthStencilAttachmentInUse = true;
         }
         if(type == GFX_RESOURCE_IMAGE_EXTERNAL_CB){
@@ -409,12 +417,34 @@ void gfx_task_graph_build(){
             .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .acess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             .stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .clear = true,
         };
         rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
             .binding = TG_INVALID,
             .handle = depthStencilHandle,
             .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .acess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            .clear = true,
+        };
+    }
+    {
+        GfxRenderPass* rp = render_pass_create("gfx_vulkan_lit_run");
+        rp->queue = GFX_RENDER_GRAPH_QUEUE_GRAPHICS;
+        rp->dispatch = gfx_vulkan_lit_run;
+        rp->sizeType = ATTACHMENT_SWAPCHAIN;
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = 0,
+            .handle = colorHandle,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .acess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        };
+        rp->infoCtx.write[rp->infoCtx.writeCount++] = (PassCtx){
+            .binding = TG_INVALID,
+            .handle = depthStencilHandle,
+            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .acess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
             .stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
         };
     }

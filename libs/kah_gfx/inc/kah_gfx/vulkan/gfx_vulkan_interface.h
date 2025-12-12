@@ -28,6 +28,7 @@ void gfx_command_buffer_end_immediate_recording(VkCommandBuffer cmdBuffer);
 
 //===RENDER_TASKS==============================================================
 void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
+void gfx_vulkan_lit_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
 void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
 void gfx_vulkan_prepare_present_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);
 void gfx_vulkan_blit_image_to_swapchain_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx);

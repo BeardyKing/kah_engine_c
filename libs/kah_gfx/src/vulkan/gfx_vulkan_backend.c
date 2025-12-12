@@ -1253,6 +1253,17 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx)
     vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 }
 
+void gfx_vulkan_lit_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
+    //===WRITE=================================================================
+    core_assert(ctx.writeCount == 2);
+    core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_COLOR);
+    core_assert(ctx.write[0].data.imageColor.binding == 0);
+    core_assert(ctx.write[1].type == GFX_RESOURCE_IMAGE_DEPTH_STENCIL);
+    core_assert(ctx.write[1].data.imageColor.binding == 1);
+    //=========================================================================
+    gfx_lit_draw(cmdBuffer);
+}
+
 void gfx_vulkan_imgui_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx){
     //===WRITE=================================================================
     core_assert(ctx.writeCount == 2);

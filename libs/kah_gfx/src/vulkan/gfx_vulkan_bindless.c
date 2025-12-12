@@ -185,6 +185,15 @@ void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView){
 VkSampler gfx_get_sampler_linear(){
     return s_gfxBindless.samplers.linear;
 }
+
+VkDescriptorSetLayout gfx_bindless_get_descriptor_set_layout(){
+    return s_gfxBindless.descriptorSetLayout;
+}
+
+VkDescriptorSet gfx_bindless_get_descriptor_set(){
+    return s_gfxBindless.descriptorSet;
+}
+
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================

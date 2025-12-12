@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 
     mem_dump_info();
     core_assert_msg(mem_alloc_table_empty(), "err: memory leaks");
-    if (mem_alloc_table_empty()) {
+    if (!mem_alloc_table_empty()) {
         printf("leaks");
     }
     return 0;

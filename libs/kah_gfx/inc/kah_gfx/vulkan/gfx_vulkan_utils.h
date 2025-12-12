@@ -13,6 +13,8 @@ const char* VkPipelineStageFlags_c_str( VkPipelineStageFlags pipelineStageFlags 
 
 VkFormat gfx_utils_core_image_format_to_vk( CoreTextureFormat textureFormat );
 uint32_t gfx_utils_get_memory_type(VkPhysicalDeviceMemoryProperties deviceMemoryProperties, uint32_t memoryTypeBits, VkMemoryPropertyFlags properties);
+
+VkPipelineLayout vk_pipeline_layout_create(VkDescriptorSetLayout* layouts, uint32_t layoutCount, VkPushConstantRange* pushConstantRanges, uint32_t pushConstantRangeCount);
 //=============================================================================
 
 #endif //GFX_VULKAN_UTILS_H

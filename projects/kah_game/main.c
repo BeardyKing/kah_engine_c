@@ -15,10 +15,21 @@
 
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
+
+#include <kah_math/print.h>
+#include <kah_math/transform.h>
 //=============================================================================
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv){
+    // Transform t = {};
+    // t.position = (vec3f){8,4,32};
+    // t.rotation = (vec3f){45,1,0};
+    // t.scale = (vec3f){1,2,3};
+    // // mat4f mm = transform_model_matrix(&t);
+    // mat4f mm = transform_model_matrix_quat_cast(&t);
+    // print_mat4f(&mm);
+    //
+    // return -1;
     fs_create(argc, argv);
     mem_create();
     allocator_create();

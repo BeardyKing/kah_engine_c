@@ -234,8 +234,8 @@ static void window_poll() {
 static void window_update_pos_size() {
     vec2i cvarPos = vec2i_cvar_get(g_coreCvars.windowPosition);
     vec2i cvarSize = vec2i_cvar_get(g_coreCvars.windowSize);
-    bool samePos = vec2i_equal(cvarPos, (vec2i) { .x = s_windowInfo.posX, .y = s_windowInfo.posY });
-    bool sameSize = vec2i_equal(cvarSize, (vec2i) { .x = s_windowInfo.width, .y = s_windowInfo.height });
+    bool samePos = vec2i_equal(&cvarPos, &(vec2i) { .x = s_windowInfo.posX, .y = s_windowInfo.posY });
+    bool sameSize = vec2i_equal(&cvarSize, &(vec2i) { .x = s_windowInfo.width, .y = s_windowInfo.height });
     if ( !samePos || !sameSize ) {
         SetWindowPos(s_windowInfo.handle, HWND_TOP, cvarPos.x, cvarPos.y, cvarSize.x, cvarSize.y, 0);
     }

@@ -7,8 +7,13 @@ add_library(kah_math
         inc/kah_math/vec4.h
 
         src/utils.c
-        src/vec4..c
         inc/kah_math/defines.h
+        inc/kah_math/mat4.h
+        src/mat4.c
+        inc/kah_math/quat.h
+        inc/kah_math/print.h
+        src/print.c
+        inc/kah_math/transform.h
 )
 
 target_include_directories(kah_math

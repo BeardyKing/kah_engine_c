@@ -9,6 +9,8 @@
 // void quat_from_euler (   quat* dest,     const vec3f* euler  )
 // void quat_to_euler   (   vec3f* dest,    const quat* q       )
 // void quat_to_mat4f   (   mat4f* dest,    const quat* q       )
+// void quat_conjugate  (   quat* dest                          )
+// void quat_conjugate2 (   quat* dest,     const quat* q       )
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -66,6 +68,21 @@ MATH_FORCE_INLINE void quat_to_mat4f(mat4f* dest, const quat* q){
     dest->col[2].x = 2.0f * (qxz + qwy);
     dest->col[2].y = 2.0f * (qyz - qwx);
     dest->col[2].z = 1.0f - 2.0f * (qxx +  qyy);
+}
+
+MATH_FORCE_INLINE void quat_conjugate(quat* dest){
+    dest->x = -dest->x;
+    dest->y = -dest->y;
+    dest->z = -dest->z;
+}
+
+MATH_FORCE_INLINE void quat_conjugate2(quat* dest, const quat* q){
+    *dest = (quat){
+        .x = -q->x,
+        .y = -q->y,
+        .z = -q->z,
+        .w = q->w,
+    };
 }
 //=============================================================================
 

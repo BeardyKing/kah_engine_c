@@ -8,12 +8,14 @@
 //=============================================================================
 
 //===API=======================================================================
-//void  mat4f_translate      (   mat4f* dest,   const vec3f* v                             )
-//void  mat4f_scale          (   mat4f* dest,   const vec3f* v                             )
-//void  mat4f_scale_s        (   mat4f* dest,   const float scalar                         )
-//void  mat4f_mul            (   mat4f* dest,   const mat4f* m1                            )
-//void  mat4f_mul2           (   mat4f* dest,   const mat4f* m1,       const mat4f* m2     )
-//void  mat4f_rotate_axis    (   mat4f* dest,   const vec3f* axis,     const float angle   )
+//void  mat4f_translate                         (   mat4f* dest,    const vec3f* v                                                                  )
+//void  mat4f_scale                             (   mat4f* dest,    const vec3f* v                                                                  )
+//void  mat4f_scale_s                           (   mat4f* dest,    const float scalar                                                              )
+//void  mat4f_mul                               (   mat4f* dest,    const mat4f* m1                                                                 )
+//void  mat4f_mul2                              (   mat4f* dest,    const mat4f* m1,    const mat4f* m2                                             )
+//void  mat4f_rotate_axis                       (   mat4f* dest,    const vec3f* axis,  const float angle                                           )
+//void  mat4f_perspective_rh_zero_to_one        (   mat4f* dest,    const float fovy,   const float aspect, const float zNear,  const float zFar    )
+//void  mat4f_perspective_rh_minus_one_to_one   (   mat4f* dest,    const float fovy,   const float aspect, const float zNear,  const float zFar    )
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -23,6 +25,7 @@ struct mat4f{
 
 #define MAT4F_IDENTITY  (mat4f){ (vec4f){1.0f, 0.0f, 0.0f, 0.0f}, (vec4f){0.0f, 1.0f, 0.0f, 0.0f}, (vec4f){0.0f, 0.0f, 1.0f, 0.0f}, (vec4f){0.0f, 0.0f, 0.0f, 1.0f}, }
 #define MAT4F_ZERO      (mat4f){ (vec4f){0.0f, 0.0f, 0.0f, 0.0f}, (vec4f){0.0f, 0.0f, 0.0f, 0.0f}, (vec4f){0.0f, 0.0f, 0.0f, 0.0f}, (vec4f){0.0f, 0.0f, 0.0f, 0.0f}, }
+#define KAH_FLIP_Y_PROJ 1
 //=============================================================================
 
 //===INLINE====================================================================
@@ -133,4 +136,39 @@ MATH_FORCE_INLINE void mat4f_rotate_axis(mat4f* dest, const vec3f* axis, const f
 
     mat4f_mul(dest, &r);
 }
+
+MATH_FORCE_INLINE void mat4f_perspective_rh_zero_to_one( mat4f* dest, const float fovy, const float aspect, const float zNear, const float zFar){
+    // TODO: replace with math_assert
+    if(fabsf(aspect) <= 1e-6f){
+        return;
+    }
+
+    const float tanHalfFovy = tan(fovy / 2.0f);
+
+    *dest = MAT4F_ZERO;
+    dest->col[0].x = 1.0f / (aspect * tanHalfFovy);
+    dest->col[1].y = (KAH_FLIP_Y_PROJ ? -1.0f : 1.0f) / (tanHalfFovy);
+    dest->col[2].z = zFar / (zNear - zFar);
+    dest->col[2].w = - (1.0f);
+    dest->col[3].z = - (zFar * zNear) / (zFar - zNear);
+}
+
+MATH_FORCE_INLINE void mat4f_perspective_rh_minus_one_to_one( mat4f* dest, const float fovy, const float aspect, const float zNear, const float zFar){
+    // TODO: replace with math_assert
+    if(fabsf(aspect) <= 1e-6f){
+        return;
+    }
+
+    const float tanHalfFovy = tan(fovy / 2.0f);
+
+    *dest = MAT4F_ZERO;
+    dest->col[0].x = 1.0f / (aspect * tanHalfFovy);
+    dest->col[1].y = (KAH_FLIP_Y_PROJ ? -1.0f : 1.0f) / (tanHalfFovy);
+    dest->col[2].z = - (zFar + zNear) / (zFar - zNear);
+    dest->col[2].w = - 1.0f;
+    dest->col[3].z = - (2.0f * zFar * zNear) / (zFar - zNear);
+}
+
+
+
 #endif //MAT4_H

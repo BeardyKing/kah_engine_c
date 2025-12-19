@@ -45,9 +45,9 @@ GfxImageHandle gfx_resource_image_depth_create(GfxAttachmentInfo* info){
         .flags = VMA_ALLOCATION_CREATE_DONT_BIND_BIT,
     };
 
-    GfxImageHandle outHandle = gfx_pool_get_gfx_image_handle();
+    GfxImageHandle outHandle = gfx_pool_gfx_image_handle_get_next();
     core_assert(outHandle != GFX_NULL_HANDLE);
-    GfxImage* currentImage = gfx_pool_get_gfx_image(outHandle);
+    GfxImage* currentImage = gfx_pool_gfx_image_get(outHandle);
 
     const VkResult createImgRes = vmaCreateImage(g_gfx.allocator, &depthImageInfo, &allocInfo, &currentImage->image, &currentImage->alloc, nullptr);
     core_assert(createImgRes == VK_SUCCESS);
@@ -106,9 +106,9 @@ GfxImageHandle gfx_resource_image_colour_create(GfxAttachmentInfo* info){
         .flags = VMA_ALLOCATION_CREATE_DONT_BIND_BIT
     };
 
-    GfxImageHandle outHandle = gfx_pool_get_gfx_image_handle();
+    GfxImageHandle outHandle = gfx_pool_gfx_image_handle_get_next();
     core_assert(outHandle != GFX_NULL_HANDLE);
-    GfxImage* currentImage = gfx_pool_get_gfx_image(outHandle);
+    GfxImage* currentImage = gfx_pool_gfx_image_get(outHandle);
     currentImage->size = targetSize;
 
     const VkResult createImgRes = vmaCreateImage(g_gfx.allocator, &colourImageInfo, &allocInfo, &currentImage->image, &currentImage->alloc, nullptr);
@@ -149,7 +149,7 @@ uint32_t gfx_resource_create_type(GfxResourceType type, GfxAttachmentInfo* info)
 }
 
 void gfx_resource_image_release(GfxImageHandle gfxHandle){
-    gfx_image_free(gfx_pool_get_gfx_image(gfxHandle));
-    gfx_pool_release_gfx_image(gfxHandle);
+    gfx_image_free(gfx_pool_gfx_image_get(gfxHandle));
+    gfx_pool_gfx_image_release(gfxHandle);
 }
 //=============================================================================

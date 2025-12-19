@@ -150,8 +150,8 @@ static GfxTextureHandle gfx_texture_create( const VkImageCreateInfo createInfo) 
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
-    const GfxTextureHandle outTextureHandle = gfx_pool_get_gfx_texture_handle();
-    GfxTexture* currentTexture = gfx_pool_get_gfx_texture(outTextureHandle);
+    const GfxTextureHandle outTextureHandle = gfx_pool_gfx_texture_handle_get_next();
+    GfxTexture* currentTexture = gfx_pool_gfx_texture_get(outTextureHandle);
 
     currentTexture->format = createInfo.format;
     currentTexture->usage = createInfo.usage;
@@ -239,7 +239,7 @@ GfxTextureHandle gfx_texture_load_from_file( const char* path ){
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
     GfxTextureHandle outTextureHandle = gfx_texture_create(imageCreateInfo);
-    GfxTexture* currentTexture = gfx_pool_get_gfx_texture(outTextureHandle);
+    GfxTexture* currentTexture = gfx_pool_gfx_texture_get(outTextureHandle);
 
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -307,12 +307,12 @@ GfxTextureHandle gfx_texture_load_from_file( const char* path ){
 }
 
 void gfx_texture_cleanup(GfxTextureHandle handle) {
-    GfxTexture* currentTexture = gfx_pool_get_gfx_texture(handle);
+    GfxTexture* currentTexture = gfx_pool_gfx_texture_get(handle);
     {
         vkDestroyImageView(g_gfx.device, currentTexture->imageView, g_gfx.allocationCallbacks);
         vmaDestroyImage(g_gfx.allocator, currentTexture->image, currentTexture->allocation);
         *currentTexture = (GfxTexture){};
     }
-    gfx_pool_release_gfx_texture(handle);
+    gfx_pool_gfx_texture_release(handle);
 }
 //=============================================================================

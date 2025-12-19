@@ -8,8 +8,8 @@
 //===API=======================================================================
 GfxMeshHandle gfx_mesh_load_from_memory(CoreRawMesh rawMesh)
 {
-    const GfxMeshHandle outMeshHandle = gfx_pool_get_gfx_mesh_handle();
-    GfxMesh* currentMesh = gfx_pool_get_gfx_mesh(outMeshHandle);
+    const GfxMeshHandle outMeshHandle = gfx_pool_gfx_mesh_handle_get_next();
+    GfxMesh* currentMesh = gfx_pool_gfx_mesh_get(outMeshHandle);
 
     const uint32_t indexBufferSize = rawMesh.indexCount * sizeof(uint32_t);
     currentMesh->indexBuffer = gfx_buffer_create(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_AUTO);
@@ -59,12 +59,12 @@ GfxMeshHandle gfx_mesh_build_quad()
 }
 
 void gfx_mesh_cleanup(GfxMeshHandle handle){
-    GfxMesh* currentMesh = gfx_pool_get_gfx_mesh(handle);
+    GfxMesh* currentMesh = gfx_pool_gfx_mesh_get(handle);
     {
         gfx_buffer_cleanup(&currentMesh->vertexBuffer);
         gfx_buffer_cleanup(&currentMesh->indexBuffer);
         *currentMesh = (GfxMesh){};
     }
-    gfx_pool_release_gfx_mesh(handle);
+    gfx_pool_gfx_mesh_release(handle);
 }
 //=============================================================================

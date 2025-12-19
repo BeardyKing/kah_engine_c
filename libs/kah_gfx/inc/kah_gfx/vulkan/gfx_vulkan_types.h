@@ -8,6 +8,7 @@
 #include <kah_core/texture_formats.h>
 
 #include <kah_math/vec2.h>
+#include <kah_math/transform.h>
 //=============================================================================
 
 //===GLOBAL_DEFINES============================================================
@@ -41,6 +42,8 @@ struct GfxTexture {
 }typedef GfxTexture;
 typedef uint32_t GfxTextureHandle;
 
+typedef uint32_t TransformHandle;
+
 struct GfxMesh{
     GfxBuffer vertexBuffer;
     GfxBuffer indexBuffer;
@@ -48,6 +51,37 @@ struct GfxMesh{
     uint32_t numIndices;
 } typedef GfxMesh;
 typedef uint32_t GfxMeshHandle;
+
+struct LitEntity {
+    uint32_t transformIndex;
+    uint32_t meshIndex;
+    uint32_t materialIndex;
+#if KAH_DEBUG
+    char debug_name[128]; //TODO: replace with gfx string arena.
+#endif //BEET_DEBUG
+} typedef LitEntity;
+typedef uint32_t LitEntityHandle;
+
+struct CameraEntity {
+    uint32_t transformIndex;
+    uint32_t cameraIndex;
+#if KAH_DEBUG
+    char debug_name[128]; // //TODO: replace with gfx string arena.
+#endif //BEET_DEBUG
+} typedef CameraEntity;
+typedef uint32_t CameraEntityHandle;
+
+struct Camera {
+    float fov;
+    float zNear;
+    float zFar;
+}typedef Camera;
+typedef uint32_t CameraHandle;
+
+struct LitMaterial {
+    uint32_t albedoImageIndex;
+} typedef LitMaterial;
+typedef uint32_t LitMaterialHandle;
 //=============================================================================
 
 //===PUBLIC_TYPES==============================================================

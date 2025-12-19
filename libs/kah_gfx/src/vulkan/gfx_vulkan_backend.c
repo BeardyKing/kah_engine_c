@@ -965,9 +965,9 @@ static void gfx_texture_builtin_create(){
     s_builtIn.textures.white = gfx_texture_load_from_file("assets/textures/white.dds");
     s_builtIn.textures.uvGrid = gfx_texture_load_from_file("assets/textures/UV_Grid/UV_Grid_test.dds");
 
-    GfxTexture* blackTexture = gfx_pool_get_gfx_texture(s_builtIn.textures.black);
-    GfxTexture* whiteTexture = gfx_pool_get_gfx_texture(s_builtIn.textures.white);
-    GfxTexture* uvGridTexture = gfx_pool_get_gfx_texture(s_builtIn.textures.uvGrid);
+    GfxTexture* blackTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.black);
+    GfxTexture* whiteTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.white);
+    GfxTexture* uvGridTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.uvGrid);
 
     blackTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_BLACK;
     whiteTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_WHITE;
@@ -1244,7 +1244,7 @@ void gfx_vulkan_clear_depth_run(VkCommandBuffer cmdBuffer, GfxRenderContext ctx)
     core_assert(ctx.writeCount == 2);
     core_assert(ctx.write[0].type == GFX_RESOURCE_IMAGE_COLOR);
     core_assert(ctx.write[0].data.imageColor.binding == 0);
-    const GfxImage* writeImage0 = gfx_pool_get_gfx_image(ctx.write[0].data.imageColor.handle);
+    const GfxImage* writeImage0 = gfx_pool_gfx_image_get(ctx.write[0].data.imageColor.handle);
     //=========================================================================
     const VkViewport viewport = {0, 0, (float)writeImage0->size.x, (float)writeImage0->size.y, 0.0f, 1.0f};
     vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
@@ -1290,7 +1290,7 @@ void gfx_vulkan_blit_image_to_swapchain_run( VkCommandBuffer cmdBuffer, GfxRende
     core_assert(ctx.readCount == 1);
     core_assert(ctx.read[0].type == GFX_RESOURCE_IMAGE_COLOR);
     core_assert(ctx.read[0].data.imageColor.binding == 0);
-    const GfxImage* readImage0 = gfx_pool_get_gfx_image(ctx.read[0].data.imageColor.handle);
+    const GfxImage* readImage0 = gfx_pool_gfx_image_get(ctx.read[0].data.imageColor.handle);
     //=========================================================================
     //===WRITE=================================================================
     core_assert(ctx.writeCount == 1);

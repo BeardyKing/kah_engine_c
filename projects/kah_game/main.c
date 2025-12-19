@@ -75,7 +75,7 @@ int main(int argc, char** argv){
         print_mat4f(&uniformBuffData.projection);
     }
 
-    return -1;
+    // return -1;
     fs_create(argc, argv);
     mem_create();
     allocator_create();

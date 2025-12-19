@@ -189,7 +189,7 @@ static void widget_image_diff_selection(DiffSelectionCtx* diffCtx){
                         diffCtx->loadedTextureHandle = gfx_texture_load_from_file(texturePath);
 
                         VkSampler sampler = gfx_get_sampler_linear();
-                        GfxTexture* tex = gfx_pool_get_gfx_texture(diffCtx->loadedTextureHandle);
+                        GfxTexture* tex = gfx_pool_gfx_texture_get(diffCtx->loadedTextureHandle);
                         VkDescriptorSet set = cImGui_ImplVulkan_AddTexture(sampler,tex->imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
                         diffCtx->imguiImageId._TexID = (ImTextureID)set;
                     }

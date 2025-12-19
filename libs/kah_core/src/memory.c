@@ -66,6 +66,24 @@ static uint32_t alloc_info_find_index(const AllocInfo* allocInfo){
 }
 
 #if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
+static CORE_FORCE_INLINE void* internal_virtual_reserve_win32(size_t reserveSize){
+    core_assert(aligned_to(reserveSize, mem_page_size()));
+
+    void* reserved = VirtualAlloc(
+        NULL,
+        reserveSize,
+        MEM_RESERVE,
+        PAGE_NOACCESS
+    );
+
+    if (reserved == nullptr) {
+        core_assert_msg(false, "VirtualAlloc reserve failed");
+        return nullptr;
+    }
+
+    return reserved;
+}
+
 static CORE_FORCE_INLINE void* internal_virtual_reserve_and_commit_win32(size_t reserveSize, size_t commitSize){
     core_assert(aligned_to(reserveSize, mem_page_size()));
     core_assert(aligned_to(commitSize, sizeof(uint64_t)));
@@ -94,7 +112,16 @@ static CORE_FORCE_INLINE AllocInfo* internal_page_alloc(size_t inBufferSize){
     const size_t pageSize = mem_page_size();
     const size_t alignedReserveSize = align_up(inBufferSize, pageSize);
 
-    //TODO: Change inBufferSize to be some minimal commited memory size (only an issue for windows) & compare perf cost.
+    //TODO: page allocator reserve N commited 0 doesn't work as I want (for win32)
+    //      When using the fixed/dynamic arr API it assumes the buf is fully commited so we can index anywhere into the buffer
+    //      but for the page allocator that doesn't work, i.e. we don't store the allocator callback in the container.
+    //      so even though we can see that the arr access would fail due to no memory being alloced we have no way to page in
+    //      memory from the virtual address range...
+    //
+    //      I'm unsure of the approach I want to take, I don't really want to pass in allocators to get funcs.
+    //      we could catch the buffer not having enough commited memory and find the array in the AllocInfo pool.
+    //      and extend the parallel structure to store the original alloc CB type is was called with.
+    //      if it is a known page allocator (i.e. from core) we could intercept...
     void* reserved = internal_virtual_reserve_and_commit_win32(alignedReserveSize, inBufferSize);
     if (reserved == nullptr) {
         return nullptr;

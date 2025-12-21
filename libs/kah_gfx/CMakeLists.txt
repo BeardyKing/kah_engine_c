@@ -37,6 +37,9 @@ add_library(kah_gfx
         src/vulkan/gfx_vulkan_buffer.c
         inc/kah_gfx/vulkan/gfx_vulkan_pipeline_builder.h
         src/vulkan/gfx_vulkan_pipeline_builder.c
+        inc/kah_gfx/gfx_types.h
+        inc/kah_gfx/vulkan/gfx_vulkan_uniform_buffers.h
+        src/gfx_vulkan_uniform_buffers.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)

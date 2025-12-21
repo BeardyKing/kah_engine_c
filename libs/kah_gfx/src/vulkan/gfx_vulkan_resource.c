@@ -46,7 +46,7 @@ GfxImageHandle gfx_resource_image_depth_create(GfxAttachmentInfo* info){
     };
 
     GfxImageHandle outHandle = gfx_pool_gfx_image_handle_get_next();
-    core_assert(outHandle != GFX_NULL_HANDLE);
+    core_assert(outHandle != GFX_POOL_NULL_HANDLE);
     GfxImage* currentImage = gfx_pool_gfx_image_get(outHandle);
 
     const VkResult createImgRes = vmaCreateImage(g_gfx.allocator, &depthImageInfo, &allocInfo, &currentImage->image, &currentImage->alloc, nullptr);
@@ -107,7 +107,7 @@ GfxImageHandle gfx_resource_image_colour_create(GfxAttachmentInfo* info){
     };
 
     GfxImageHandle outHandle = gfx_pool_gfx_image_handle_get_next();
-    core_assert(outHandle != GFX_NULL_HANDLE);
+    core_assert(outHandle != GFX_POOL_NULL_HANDLE);
     GfxImage* currentImage = gfx_pool_gfx_image_get(outHandle);
     currentImage->size = targetSize;
 

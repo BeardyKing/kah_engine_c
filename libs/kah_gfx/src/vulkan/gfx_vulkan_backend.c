@@ -14,6 +14,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
 #include <kah_gfx/vulkan/gfx_vulkan_texture.h>
 #include <kah_gfx/vulkan/gfx_vulkan_mesh.h>
+#include <kah_gfx/vulkan/gfx_vulkan_uniform_buffers.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/dynamic_array.h>
@@ -21,6 +22,7 @@
 #include <kah_core/utils.h>
 #include <kah_core/bit_array.h>
 #include <kah_core/filesystem.h>
+#include <kah_core/core_cvars.h>
 
 #include <kah_math/utils.h>
 #include <kah_math/vec2.h>
@@ -1201,6 +1203,33 @@ static bool gfx_check_window_needs_resize(VkResult result){
     }
     return s_gfx.windowNeedsResize;
 }
+
+static void gfx_scene_ubo_update(){
+    CameraEntity* camEnt = gfx_pool_camera_entity_get(0); //TODO: Replae hardcoded 0 with a current cam ent index func.
+    Transform* camTransform = gfx_pool_transform_get(camEnt->transformIndex);
+    Camera* cam = gfx_pool_camera_get(camEnt->transformIndex);
+
+    SceneUBO uniformBuffData = {
+        .projection = MAT4F_ZERO,
+        .view = MAT4F_IDENTITY,
+        .position = camTransform->position,
+        .unused_0 = 0
+    };
+
+    quat rotation;
+    quat_from_euler(&rotation, &camTransform->rotation);
+    quat_conjugate(&rotation);
+    mat4f viewDir = MAT4F_IDENTITY;
+    quat_to_mat4f(&uniformBuffData.view, &rotation);
+    mat4f_translate(&viewDir, &(vec3f){-camTransform->position.x, -camTransform->position.y, -camTransform->position.z});
+    mat4f_mul(&uniformBuffData.view, &viewDir);
+
+    const vec2i windowSize = vec2i_cvar_get(g_coreCvars.windowSize);
+    mat4f_perspective_rh_zero_to_one(&uniformBuffData.projection, as_radians_f(cam->fov), (float) windowSize.x / (float) windowSize.y, cam->zNear, cam->zFar);
+
+    GfxBuffer* sceneBuffer = gfx_uniform_buffer_scene_get();
+    memcpy(sceneBuffer->info.pMappedData, &uniformBuffData, sizeof(SceneUBO));
+}
 //=============================================================================
 
 //===API=======================================================================
@@ -1221,6 +1250,7 @@ void gfx_update(){
     vkResetFences(g_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
 
     gfx_task_graph_build();
+    gfx_scene_ubo_update();
 
     VkCommandBuffer cmdBuffer = s_gfx.commandBuffers[gfx_buffer_index()];
     vkResetCommandBuffer(cmdBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
@@ -1423,6 +1453,7 @@ void gfx_create(void* windowHandle){
     gfx_task_graph_create(true);
     gfx_pipeline_cache_create();
     gfx_bindless_create();
+    gfx_uniform_buffers_create();
 
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
     gfx_imgui_create(windowHandle);
@@ -1442,6 +1473,7 @@ void gfx_cleanup(){
     gfx_imgui_cleanup();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
 
+    gfx_uniform_buffers_cleanup();
     gfx_bindless_cleanup();
     gfx_pipeline_cache_cleanup();
     gfx_task_graph_cleanup(true);

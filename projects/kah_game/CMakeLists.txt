@@ -5,6 +5,8 @@ add_executable(kah_game
 
         inc/client/widgets/widget_manager.h
         src/widgets/widget_manager.c
+        inc/client/entity_builder.h
+        src/entity_builder.c
 )
 
 

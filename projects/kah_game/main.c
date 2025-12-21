@@ -18,19 +18,11 @@
 
 #include <kah_math/print.h>
 #include <kah_math/transform.h>
-//=============================================================================
-struct Camera {
-    float fov;
-    float zNear;
-    float zFar;
-} typedef Camera;
 
-struct SceneUBO {
-    mat4f projection;
-    mat4f view;
-    vec3f position;
-    float unused_0;
-} typedef SceneUBO;
+#include <client/entity_builder.h>
+#include <kah_gfx/gfx_types.h>
+//=============================================================================
+
 
 int main(int argc, char** argv){
     {
@@ -75,7 +67,6 @@ int main(int argc, char** argv){
         print_mat4f(&uniformBuffData.projection);
     }
 
-    // return -1;
     fs_create(argc, argv);
     mem_create();
     allocator_create();
@@ -90,6 +81,7 @@ int main(int argc, char** argv){
         time_create();
         input_create();
         gfx_create(window_get_handle());
+        entity_builder_create();
 
         while (window_is_open()){
             mem_arena_reset();
@@ -104,6 +96,7 @@ int main(int argc, char** argv){
             gfx_update();
         }
 
+        entity_builder_create();
         gfx_cleanup();
         input_cleanup();
         time_cleanup();

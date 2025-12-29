@@ -14,7 +14,9 @@ static void primary_camera_create(){
     CameraEntity* camEnt = gfx_pool_camera_entity_get(s_primaryCamEnt);
     camEnt->transformIndex = gfx_pool_transform_handle_get_next();
     camEnt->cameraIndex = gfx_pool_camera_handle_get_next();
+#if KAH_DEBUG
     sprintf(camEnt->debug_name, "primary camera");
+#endif
 
     Transform* transform = gfx_pool_transform_get(camEnt->transformIndex);
     transform->position = (vec3f){-1.5f, 0.5f, 2.5f};

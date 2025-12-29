@@ -33,6 +33,18 @@
 //===INTERNAL_CONSTANTS/DEFINES================================================
 constexpr char KAH_VK_VALIDATION_LAYER_NAME[] = "VK_LAYER_KHRONOS_validation";
 
+#if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
+constexpr char KAH_VK_PLATFORM_SURFACE_EXTENSION_NAME[] = VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
+#endif
+
+#if CHECK_FEATURE(FEATURE_PLATFORM_LINUX)
+constexpr char KAH_VK_PLATFORM_SURFACE_EXTENSION_NAME[] = VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
+#endif
+
+#if CHECK_FEATURE(FEATURE_PLATFORM_APPLE)
+constexpr char KAH_VK_PLATFORM_SURFACE_EXTENSION_NAME[] = VK_MVK_MACOS_SURFACE_EXTENSION_NAME;
+#endif
+
 constexpr VkDebugUtilsMessageSeverityFlagsEXT KAH_VK_DEBUG_UTILS_MESSAGE_SEVERITY =
         VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
         VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
@@ -307,7 +319,7 @@ static void gfx_instance_create(){
     }
 
     char* surfaceName      = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_SURFACE_EXTENSION_NAME)))->extensionName;
-    char* win32SurfaceName = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_WIN32_SURFACE_EXTENSION_NAME)))->extensionName;
+    char* win32SurfaceName = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(KAH_VK_PLATFORM_SURFACE_EXTENSION_NAME)))->extensionName;
     char* debugUtilName    = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)))->extensionName;
     char* deviceProp2Name  = ((VkExtensionProperties*)dynamic_array_get(&s_gfx.supportedInstanceExtensions,gfx_find_supported_instance_extension_index(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)))->extensionName;
 

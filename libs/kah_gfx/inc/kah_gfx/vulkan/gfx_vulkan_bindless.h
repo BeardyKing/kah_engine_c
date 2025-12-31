@@ -8,6 +8,9 @@
 //===GLOABL_DEFINES============================================================
 #define KAH_SAMPLER_ID_NEAREST 0
 #define KAH_SAMPLER_ID_LINEAR 1
+
+#define KAH_DESCRIPTOR_SET_BINDING_BINLESS_TEXTURE 0
+#define KAH_DESCRIPTOR_SET_BINDING_BINLESS_SAMPLER 1
 //=============================================================================
 
 //===API=======================================================================

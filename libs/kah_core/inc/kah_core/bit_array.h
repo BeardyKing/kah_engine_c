@@ -15,8 +15,14 @@
 //===TYPES=====================================================================
 #define KAH_BIT_ARRAY_ALIGNMENT 64
 
+typedef enum BitArrayType {
+    BITARRAY_STATIC,
+    BITARRAY_DYNAMIC
+} BitArrayType;
+
 struct BitArrayHeader{
     uint64_t bitCount;
+    BitArrayType type;
 } typedef BitArrayHeader;
 
 struct BitArray_64{     BitArrayHeader header; uint64_t buf[1];   } typedef BitArray_64;
@@ -29,11 +35,11 @@ struct BitArray_4096{   BitArrayHeader header; uint64_t buf[64];  } typedef BitA
 struct BitArray_8192{   BitArrayHeader header; uint64_t buf[128]; } typedef BitArray_8192;
 struct BitArray_16384{  BitArrayHeader header; uint64_t buf[256]; } typedef BitArray_16384;
 
-struct BitArrayDynamic{ AllocInfo* info; BitArrayHeader header; uint64_t* buf; } typedef BitArrayDynamic;
+struct BitArrayDynamic{ BitArrayHeader header; AllocInfo* info;   } typedef BitArrayDynamic;
 //=============================================================================
 
 //===API=======================================================================
-CORE_FORCE_INLINE uint64_t* bitarray_buffer(BitArrayHeader* header) { return (uint64_t*)(header + 1); }
+uint64_t* bitarray_buffer(BitArrayHeader* header);
 
 bool   bitarray_check_bit(BitArrayHeader* header, size_t bitIndex);
 void   bitarray_set_bit(BitArrayHeader* header, size_t bitIndex);

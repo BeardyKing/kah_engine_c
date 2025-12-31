@@ -123,8 +123,29 @@ static struct BuiltIns{
 
     struct{
         GfxMeshHandle quad;
+        GfxMeshHandle cube;
     }meshes;
 } s_builtIn;
+
+GfxTextureHandle gfx_texture_built_in_black(){
+    return s_builtIn.textures.black;
+}
+
+GfxTextureHandle gfx_texture_built_in_white(){
+    return s_builtIn.textures.white;
+}
+
+GfxTextureHandle gfx_texture_built_in_uv_grid(){
+    return s_builtIn.textures.uvGrid;
+}
+
+GfxMeshHandle gfx_mesh_built_in_quad(){
+    return s_builtIn.meshes.quad;
+}
+
+GfxMeshHandle gfx_mesh_built_in_cube(){
+    return s_builtIn.meshes.quad;
+}
 
 static struct GfxFeatures{
     VkPhysicalDeviceFeatures2 deviceFeatures;
@@ -662,7 +683,7 @@ static void gfx_physical_device_queues_create(){
 
     vkGetPhysicalDeviceFeatures2(g_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
     core_assert_msg(s_gfxFeatures.features12.descriptorIndexing, "err: Descriptor indexing is required");
-    core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
+    // core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
     core_assert_msg(s_gfxFeatures.features12.timelineSemaphore || s_gfxFeatures.timelineSemaphoreFeatures.timelineSemaphore, "err: Timeline semaphores is required");
     core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
     core_assert_msg(s_gfxFeatures.features13.synchronization2 || s_gfxFeatures.synchronization2Features.synchronization2, "err: Synchronization 2 is required");
@@ -955,10 +976,12 @@ static void gfx_pipeline_cache_create(){
 
 static void gfx_mesh_builtin_create(){
     s_builtIn.meshes.quad = gfx_mesh_build_quad();
+    s_builtIn.meshes.cube = gfx_mesh_build_cube();
 }
 
 static void gfx_mesh_builtin_cleanup(){
     gfx_mesh_cleanup(s_builtIn.meshes.quad);
+    gfx_mesh_cleanup(s_builtIn.meshes.cube);
 }
 
 static void gfx_texture_builtin_create(){
@@ -1213,7 +1236,7 @@ static void gfx_scene_ubo_update(){
         .projection = MAT4F_ZERO,
         .view = MAT4F_IDENTITY,
         .position = camTransform->position,
-        .unused_0 = 0
+        .unused_0 = 0.0f
     };
 
     quat rotation;
@@ -1249,8 +1272,8 @@ void gfx_update(){
     }
     vkResetFences(g_gfx.device, 1, &s_gfx.graphicsFenceWait[gfx_swap_chain_index()]);
 
-    gfx_task_graph_build();
     gfx_scene_ubo_update();
+    gfx_task_graph_build();
 
     VkCommandBuffer cmdBuffer = s_gfx.commandBuffers[gfx_buffer_index()];
     vkResetCommandBuffer(cmdBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );

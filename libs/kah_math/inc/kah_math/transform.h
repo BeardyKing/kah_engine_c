@@ -23,6 +23,14 @@ struct Transform {
 //=============================================================================
 
 //===INLINE====================================================================
+MATH_FORCE_INLINE Transform transform_default(){
+    return (Transform){
+        .position = (vec3f){.x = 0, .y = 0, .z = 0},
+        .rotation = (vec3f){.x = 0, .y = 0, .z = 0},
+        .scale =    (vec3f){.x = 1, .y = 1, .z = 1},
+    };
+}
+
 MATH_FORCE_INLINE mat4f transform_model_matrix(const Transform* t){
     mat4f out = MAT4F_IDENTITY;
     mat4f_translate(&out, &t->position);

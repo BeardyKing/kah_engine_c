@@ -27,6 +27,14 @@ static CORE_FORCE_INLINE void internal_clear_last_word_bits(uint64_t* word, size
 //=============================================================================
 
 //===API=======================================================================
+uint64_t* bitarray_buffer(BitArrayHeader* header){
+    if (header->type == BITARRAY_DYNAMIC) {
+        BitArrayDynamic* bitArrayDynamic = (BitArrayDynamic*)header;
+        return (uint64_t*)(bitArrayDynamic->info->bufferAddress);
+    }
+    return (uint64_t*)(header + 1);
+}
+
 void bitarray_print(BitArrayHeader* header) {
     core_assert(header != nullptr);
     uint64_t* buf = bitarray_buffer(header);
@@ -271,11 +279,14 @@ size_t bitarray_find_first_unset_bit(BitArrayHeader* header) {
 BitArrayDynamic bitarray_dynamic_create(Allocator allocator, size_t count){
     //Note: Really all bitarray sizes should match up to mem_word_size() for platform perf reasons.
     const size_t wordCount = align_up(count, KAH_BIT_ARRAY_ALIGNMENT) / KAH_BIT_ARRAY_ALIGNMENT;
-    AllocInfo* info = allocator.alloc( wordCount * sizeof(uint64_t));
-    return (BitArrayDynamic){
+    AllocInfo* info = allocator.alloc(wordCount * sizeof(uint64_t));
+    core_assert(info != nullptr);
+    return (BitArrayDynamic) {
+        .header = (BitArrayHeader){
+            .bitCount = count,
+            .type = BITARRAY_DYNAMIC
+        },
         .info = info,
-        .header.bitCount = count,
-        .buf = info->bufferAddress
     };
 }
 
@@ -283,6 +294,7 @@ void bitarray_dynamic_cleanup(Allocator allocator, BitArrayDynamic* bitarrayDyna
     core_assert(bitarrayDynamic != nullptr);
     allocator.free(bitarrayDynamic->info);
     *bitarrayDynamic = (BitArrayDynamic){};
+
 }
 //=============================================================================
 

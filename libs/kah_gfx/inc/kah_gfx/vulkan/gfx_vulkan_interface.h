@@ -15,6 +15,13 @@ uint32_t gfx_buffer_index();
 uint32_t gfx_swap_chain_index();
 uint32_t gfx_last_swap_chain_index();
 VkPhysicalDeviceMemoryProperties gfx_get_device_memory_properties();
+
+GfxTextureHandle gfx_texture_built_in_black();
+GfxTextureHandle gfx_texture_built_in_white();
+GfxTextureHandle gfx_texture_built_in_uv_grid();
+
+GfxMeshHandle gfx_mesh_built_in_quad();
+GfxMeshHandle gfx_mesh_built_in_cube();
 //=============================================================================
 
 //===COMMAND_BUFFER============================================================

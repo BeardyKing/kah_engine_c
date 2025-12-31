@@ -40,6 +40,16 @@ static size_t pool_acquire_next_free_index(Pool* pool){
 static void pool_release_index(Pool* pool, uint32_t index){
     bitarray_clear_bit(&pool->freeEntries.header, index);
 }
+
+static uint32_t pool_get_next_active_index(Pool* pool, uint32_t startIndex){
+    const uint32_t bitCount = pool->freeEntries.header.bitCount;
+    for (uint32_t i = startIndex; i < bitCount; ++i) {
+        if (bitarray_check_bit(&pool->freeEntries.header, i)) {
+            return i;
+        }
+    }
+    return GFX_POOL_NULL_HANDLE;
+}
 //=============================================================================
 
 //===INTERNAL_STRUCTS==========================================================
@@ -58,6 +68,7 @@ static struct GfxPool{
 //===POOL_IMPL_MACRO===========================================================
 
 //<T_HANDLE>    gfx_pool_<NAME>_handle_get_next();
+//<T_HANDLE>    gfx_pool_<NAME>_get_next_active(<T_HANDLE> prevHandle);
 //<T>*          gfx_pool_<NAME>_get(<T_HANDLE> handle);
 //void          gfx_pool_<NAME>_release(<T_HANDLE> handle);
 
@@ -76,6 +87,15 @@ T* gfx_pool_##NAME##_get(T##Handle handle){                                     
 void gfx_pool_##NAME##_release(T##Handle handle){                                       \
     core_assert(handle < (POOL_COUNT_MAX));                                             \
     pool_release_index(&s_pool.POOL_FIELD, handle);                                     \
+}                                                                                       \
+                                                                                        \
+T##Handle gfx_pool_##NAME##_get_next_active(T##Handle prevHandle){                      \
+    uint32_t start = (prevHandle == GFX_POOL_NULL_HANDLE) ? 0 : (prevHandle + 1);       \
+    uint32_t idx = pool_get_next_active_index(&s_pool.POOL_FIELD, start);               \
+    if (idx == GFX_POOL_NULL_HANDLE)                                                    \
+        return (T##Handle)GFX_POOL_NULL_HANDLE;                                         \
+    core_assert(idx < (POOL_COUNT_MAX));                                                \
+    return (T##Handle)idx;                                                              \
 }
 //=============================================================================
 
@@ -87,6 +107,7 @@ GFX_POOL_IMPL( Transform,   transform,      transforms,     GFX_POOL_TRANSFORM_C
 GFX_POOL_IMPL( Camera,      camera,         cameras,        GFX_POOL_CAMERA_COUNT_MAX       )
 GFX_POOL_IMPL( CameraEntity,camera_entity,  cameraEntities, GFX_POOL_CAMERA_ENT_COUNT_MAX   )
 GFX_POOL_IMPL( LitEntity,   lit_entity,     litEntities,    GFX_POOL_LIT_ENT_COUNT_MAX      )
+GFX_POOL_IMPL( LitMaterial, lit_material,   litMaterials,   GFX_POOL_LIT_MATERIAL_COUNT_MAX )
 //=============================================================================
 
 //===INIT/SHUTDOWN=============================================================

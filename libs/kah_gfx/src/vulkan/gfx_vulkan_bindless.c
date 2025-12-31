@@ -16,9 +16,6 @@ static constexpr uint32_t KAH_MIP_MAP_MAX = 16;
 
 static constexpr uint32_t KAH_BINDLESS_TEXTURE_MAX = 16536;
 static constexpr uint32_t KAH_BINDLESS_SAMPLERS_MAX = 32;
-
-static constexpr uint32_t KAH_DESCRIPTOR_SET_BINDING_TEXTURE = 0;
-static constexpr uint32_t KAH_DESCRIPTOR_SET_BINDING_SAMPLER = 1;
 //=============================================================================
 
 //===INTERNAL_STRUCTS==========================================================
@@ -89,18 +86,18 @@ static void gfx_bindless_descriptor_create(){
     {
         const VkDescriptorSetLayoutBinding bindings[KAH_BINDLESS_POOL_SIZE] = {
             (VkDescriptorSetLayoutBinding){
-                .binding = KAH_DESCRIPTOR_SET_BINDING_TEXTURE,
+                .binding = KAH_DESCRIPTOR_SET_BINDING_BINLESS_TEXTURE,
                 .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ,
                 .descriptorCount = KAH_BINDLESS_TEXTURE_MAX,
                 .stageFlags = VK_SHADER_STAGE_ALL,
                 .pImmutableSamplers = nullptr,
             },
             (VkDescriptorSetLayoutBinding){
-            .binding = KAH_DESCRIPTOR_SET_BINDING_SAMPLER,
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-            .descriptorCount = KAH_BINDLESS_SAMPLERS_MAX ,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-            .pImmutableSamplers = nullptr
+                .binding = KAH_DESCRIPTOR_SET_BINDING_BINLESS_SAMPLER,
+                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+                .descriptorCount = KAH_BINDLESS_SAMPLERS_MAX ,
+                .stageFlags = VK_SHADER_STAGE_ALL,
+                .pImmutableSamplers = nullptr
             }
         };
 
@@ -159,7 +156,7 @@ void gfx_bindless_set_sampler(uint32_t samplerIndex, VkSampler sampler){
     const VkWriteDescriptorSet writeSet = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = s_gfxBindless.descriptorSet,
-        .dstBinding = KAH_DESCRIPTOR_SET_BINDING_SAMPLER,
+        .dstBinding = KAH_DESCRIPTOR_SET_BINDING_BINLESS_SAMPLER,
         .dstArrayElement = samplerIndex,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
@@ -173,7 +170,7 @@ void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView){
     const VkWriteDescriptorSet writeSet = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstSet = s_gfxBindless.descriptorSet,
-        .dstBinding = KAH_DESCRIPTOR_SET_BINDING_TEXTURE,
+        .dstBinding = KAH_DESCRIPTOR_SET_BINDING_BINLESS_TEXTURE,
         .dstArrayElement = imageIndex,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,

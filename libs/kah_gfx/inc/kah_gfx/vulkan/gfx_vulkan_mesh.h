@@ -29,6 +29,8 @@ struct CoreRawMesh {
 GfxMeshHandle gfx_mesh_load_from_memory(CoreRawMesh rawMesh);
 void gfx_mesh_cleanup(GfxMeshHandle handle);
 GfxMeshHandle gfx_mesh_build_quad();
+GfxMeshHandle gfx_mesh_build_cube();
+
 //=============================================================================
 
 #endif //GFX_VULKAN_MESH_H

@@ -1,24 +1,42 @@
 #version 450
 
-layout (location = 0) out vec3 outColor;
+//===GLOBAL=================================================
+layout (set = 1, binding = 0) uniform SceneUBO {
+    mat4 projection;
+    mat4 view;
+    vec3 position;
+    float unused_0;
+} scene;
+//==========================================================
 
-void main() 
-{
-	//const array of positions for the triangle
-	const vec3 positions[3] = vec3[3](
-		vec3(1.f,1.f, 0.0f),
-		vec3(-1.f,1.f, 0.0f),
-		vec3(0.f,-1.f, 0.0f)
-	);
+//===LOCAL==================================================
+layout (location = 0) in vec3 v_position;
+layout (location = 1) in vec3 v_normal;
+layout (location = 2) in vec2 v_uv;
+layout (location = 3) in vec3 v_color;
 
-	//const array of colors for the triangle
-	const vec3 colors[3] = vec3[3](
-		vec3(1.0f, 0.0f, 0.0f), //red
-		vec3(0.0f, 1.0f, 0.0f), //green
-		vec3(00.f, 0.0f, 1.0f)  //blue
-	);
+layout (push_constant) uniform PushConstants {
+    mat4 model;
+    uint bindlessImageIndex;
+} constants;
+//==========================================================
 
-	//output the position of each vertex
-	gl_Position = vec4(positions[gl_VertexIndex], 1.0f);
-	outColor = colors[gl_VertexIndex];
+//===STAGE OUT==============================================
+layout (location = 0) out StageLayout {
+    vec3 color;
+    vec3 normal;
+    vec2 uv;
+    vec3 worldPos;
+} stageLayout;
+//==========================================================
+
+//===FUNCTIONS==============================================
+void main() {
+    stageLayout.color = v_color;
+    stageLayout.uv = v_uv;
+    stageLayout.normal = transpose(inverse(mat3(constants.model))) * v_normal;
+    stageLayout.worldPos = vec3(constants.model * vec4(v_position, 1.0));
+
+    gl_Position = ((scene.projection * scene.view) * vec4(stageLayout.worldPos, 1.0));
 }
+//==========================================================

@@ -16,6 +16,7 @@ struct PipelineBuilder{
     VkPipelineColorBlendAttachmentState colorBlendAttachmentState;
     VkPipelineMultisampleStateCreateInfo multisamplingState;
     VkPipelineDepthStencilStateCreateInfo depthStencilState;
+    VkPipelineVertexInputStateCreateInfo vertexInputState;
 } typedef PipelineBuilder;
 //=============================================================================
 
@@ -36,6 +37,7 @@ void gfx_pipeline_builder_set_color_attachment_format(PipelineBuilder* builder, 
 void gfx_pipeline_builder_set_depth_stencil_attachment_format(PipelineBuilder* builder, VkFormat format);
 void gfx_pipeline_builder_set_depth_test_disabled(PipelineBuilder* builder);
 void gfx_pipeline_builder_set_depth_test_enabled(PipelineBuilder* builder, bool depthWriteEnable, VkCompareOp op);
+void gfx_pipeline_builder_set_vertex_input( PipelineBuilder* builder, VkVertexInputBindingDescription* bindings, uint32_t bindingCount, VkVertexInputAttributeDescription* attributes, uint32_t attributeCount);
 //=============================================================================
 
 #endif //GFX_PIPELINE_BUILDER_H

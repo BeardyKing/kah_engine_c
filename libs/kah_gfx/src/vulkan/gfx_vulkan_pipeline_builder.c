@@ -23,8 +23,21 @@ PipelineBuilder gfx_pipeline_builder_create(VkPipelineLayout pipelineLayout){
         .colorBlendAttachmentState = (VkPipelineColorBlendAttachmentState){},
         .multisamplingState = (VkPipelineMultisampleStateCreateInfo){.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO},
         .depthStencilState = (VkPipelineDepthStencilStateCreateInfo){.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO},
+        .vertexInputState = (VkPipelineVertexInputStateCreateInfo){.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO},
     };
     return builder;
+}
+
+void gfx_pipeline_builder_set_vertex_input( PipelineBuilder* builder, VkVertexInputBindingDescription* bindings, uint32_t bindingCount, VkVertexInputAttributeDescription* attributes, uint32_t attributeCount){
+    core_assert(builder != nullptr);
+    core_assert(bindings != nullptr || bindingCount == 0);
+    core_assert(attributes != nullptr || attributeCount == 0);
+
+    builder->vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    builder->vertexInputState.vertexBindingDescriptionCount = bindingCount;
+    builder->vertexInputState.pVertexBindingDescriptions = bindings;
+    builder->vertexInputState.vertexAttributeDescriptionCount = attributeCount;
+    builder->vertexInputState.pVertexAttributeDescriptions = attributes;
 }
 
 void gfx_pipeline_builder_set_input_topology(PipelineBuilder* builder, VkPrimitiveTopology topology){
@@ -151,7 +164,7 @@ VkPipeline gfx_pipeline_builder_build(PipelineBuilder* builder, const char* vert
         .pNext = &builder->renderInfo,
         .stageCount = 2,
         .pStages = &shaderStages[0],
-        .pVertexInputState = &vertexInputInfo,
+        .pVertexInputState = &builder->vertexInputState,
         .pInputAssemblyState = &builder->inputAssemblyState,
         .pViewportState = &viewportState,
         .pRasterizationState = &builder->rasterizerState,

@@ -103,7 +103,9 @@ static void widget_state_update() {
 
 static void cvar_debug_vec2i(const char* varName, vec2i_cvar_t* cvar) {
     char textBuf[128] = {};
-    sprintf_s(textBuf, 128, "%s - vec2i{%i,%i}###%s_cvar_header", varName, cvar->current.x, cvar->current.y, varName);
+    //TODO: add c_str_sprintf_s (linux compat)
+    sprintf(textBuf,"%s - vec2i{%i,%i}###%s_cvar_header", varName, cvar->current.x, cvar->current.y, varName);
+    core_assert(strlen(textBuf) < 128);
     if(ImGui_CollapsingHeader(textBuf, ImGuiTreeNodeFlags_None)){
         ImGui_Text("min (%i , %i) - max (%i , %i)", cvar->min.x, cvar->min.y, cvar->max.x, cvar->max.y);
         
@@ -112,12 +114,15 @@ static void cvar_debug_vec2i(const char* varName, vec2i_cvar_t* cvar) {
         float half = (avail - spacing) * 0.5f;
 
         ImGui_PushItemWidth(half);
-        sprintf_s(textBuf, 128, "##cvar_current_x_%s", varName);
+        sprintf(textBuf,"##cvar_current_x_%s", varName);
+        core_assert(strlen(textBuf) < 128);
+
         ImGui_DragIntEx(textBuf, &cvar->current.x, 1, cvar->min.x, cvar->max.x, ".x = (%i)", ImGuiSliderFlags_AlwaysClamp);
         ImGui_PopItemWidth();
         ImGui_SameLineEx(0.0f, spacing);
         ImGui_PushItemWidth(half);
-        sprintf_s(textBuf, 128, "##cvar_current_y_%s", varName);
+        sprintf(textBuf,"##cvar_current_y_%s", varName);
+        core_assert(strlen(textBuf) < 128);
         ImGui_DragIntEx(textBuf, &cvar->current.y, 1, cvar->min.y, cvar->max.y, ".y = (%i)", ImGuiSliderFlags_AlwaysClamp);
         ImGui_PopItemWidth();
     }
@@ -158,7 +163,6 @@ static void widget_image_diff_selection(DiffSelectionCtx* diffCtx){
     }
     else {
         if (ImGui_BeginTable("fileTable", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-            char colString[128];
             sprintf(colString, "Files [%i] - Selected[%i]##\n", diffCtx->dirFileCount, diffCtx->selectedFileIndex);
             ImGui_TableSetupColumn(colString, ImGuiTableColumnFlags_None);
             ImGui_TableHeadersRow();

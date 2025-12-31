@@ -17,7 +17,7 @@ struct Time {
     double timeScale;
     uint32_t frameCount;
     double deltaTime;
-} typedef Time
+} typedef Time;
 
 static Time s_time = (Time){};
 //=============================================================================

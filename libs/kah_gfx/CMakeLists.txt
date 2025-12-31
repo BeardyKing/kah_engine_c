@@ -50,9 +50,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     target_compile_definitions(kah_gfx PRIVATE VK_USE_PLATFORM_MACOS_MVK)
 endif()
 
-if(NOT WIN32)
-    target_link_libraries(kah_gfx PRIVATE dl)
-endif()
+#if(NOT WIN32)
+#    target_link_libraries(kah_gfx PRIVATE dl)
+#endif()
 
 find_package(Vulkan QUIET)
 if(TARGET Vulkan::Vulkan)

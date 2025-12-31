@@ -31,7 +31,7 @@ bool internal_core_sanity_msg_impl(const char* file, const char* function, int l
 #endif
 
 #if defined(__linux__) || defined(__APPLE__)
-#include <csignal>
+#include <signal.h>
 #define core_debug_break() raise(SIGTRAP)
 #elif defined(_WIN32)
 #define core_debug_break() __debugbreak()

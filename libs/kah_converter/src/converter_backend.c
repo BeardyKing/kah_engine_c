@@ -31,16 +31,15 @@ bool converter_init(const char *rawAssetDir, const char *targetAssetDir) {
     c_str_n_copy(g_converterLocations.rawAssetDir, rawAssetDir, KAH_FILESYSTEM_MAX_PATH);
     c_str_n_copy(g_converterLocations.targetAssetDir, targetAssetDir, KAH_FILESYSTEM_MAX_PATH);
 
-#if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
     c_str_n_copy_env(g_converterLocations.compressonatorSDKDir, "COMPRESSONATOR_ROOT", KAH_FILESYSTEM_MAX_PATH);
     c_str_n_copy_env(g_converterLocations.vulkanSDKDir, "VULKAN_SDK", KAH_FILESYSTEM_MAX_PATH);
 
+#if CHECK_FEATURE(FEATURE_PLATFORM_WINDOWS)
     snprintf(g_converterLocations.compressonatorCLI, KAH_FILESYSTEM_MAX_PATH,"%s\\bin\\CLI\\compressonatorcli.exe", g_converterLocations.compressonatorSDKDir);
     snprintf(g_converterLocations.glslValidatorCLI, KAH_FILESYSTEM_MAX_PATH, "%s\\Bin\\glslangValidator.exe", g_converterLocations.vulkanSDKDir);
-
 #elif CHECK_FEATURE(FEATURE_PLATFORM_LINUX)
-    snprintf(g_converterLocations.compressonatorCLI, MAX_CONVERTER_PATH, "%s", BEET_CMAKE_PIPELINE_ASSETS_DIR "tools/linux/compressonatorcli-4.5.52/compressonatorcli");
-    snprintf(g_converterLocations.glslValidatorCLI, MAX_CONVERTER_PATH,"glslangValidator");
+    snprintf(g_converterLocations.compressonatorCLI, KAH_FILESYSTEM_MAX_PATH,"%s\\bin\\CLI\\compressonatorcli", g_converterLocations.compressonatorSDKDir);
+    snprintf(g_converterLocations.glslValidatorCLI, KAH_FILESYSTEM_MAX_PATH, "%s\\Bin\\glslangValidator", g_converterLocations.vulkanSDKDir);
 #endif
 
     if (g_converterLocations.rawAssetDir[0] == '\0' || g_converterLocations.targetAssetDir[0] == '\0') {

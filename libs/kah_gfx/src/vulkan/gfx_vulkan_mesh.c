@@ -6,10 +6,11 @@
 //=============================================================================
 
 //===API=======================================================================
-GfxMeshHandle gfx_mesh_load_from_memory(CoreRawMesh rawMesh)
-{
+GfxMeshHandle gfx_mesh_load_from_memory(CoreRawMesh rawMesh){
     const GfxMeshHandle outMeshHandle = gfx_pool_gfx_mesh_handle_get_next();
     GfxMesh* currentMesh = gfx_pool_gfx_mesh_get(outMeshHandle);
+    currentMesh->numIndices = rawMesh.indexCount;
+    currentMesh->numVertices = rawMesh.vertexCount;
 
     const uint32_t indexBufferSize = rawMesh.indexCount * sizeof(uint32_t);
     currentMesh->indexBuffer = gfx_buffer_create(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_AUTO);
@@ -19,6 +20,9 @@ GfxMeshHandle gfx_mesh_load_from_memory(CoreRawMesh rawMesh)
 
     GfxBuffer staging = gfx_buffer_create(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO);
     {
+        memcpy( (uint8_t*)staging.info.pMappedData, rawMesh.vertexData, vertexBufferSize);
+        memcpy( (uint8_t*)staging.info.pMappedData + vertexBufferSize, rawMesh.indexData, indexBufferSize);
+
         VkCommandBuffer cmdBuffer = gfx_command_buffer_start_immediate_recording();
         {
             const VkBufferCopy vertexCopy = (VkBufferCopy){ .srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize,};
@@ -93,24 +97,23 @@ GfxMeshHandle gfx_mesh_build_cube(){
 }
 
 GfxMeshHandle gfx_mesh_build_quad(){
-    CoreVertex v0 = {.pos = {{-0.5f, -0.5f, 0.0f}}, .normal = {}, .uv = {}, .color = {{1.0f, 0.0f, 0.0f}}};
-    CoreVertex v1 = {.pos = {{0.5f, -0.5f, 0.0f}}, .normal = {}, .uv = {}, .color = {{0.0f, 1.0f, 0.0f}}};
-    CoreVertex v2 = {.pos = {{0.5f, 0.5f, 0.0f}}, .normal = {}, .uv = {}, .color = {{0.0f, 0.0f, 1.0f}}};
-    CoreVertex v3 = {.pos = {{-0.5f, 0.5f, 0.0f}}, .normal = {}, .uv = {}, .color = {{1.0f, 1.0f, 1.0f}}};
+    CoreVertex vertexData[4] = {
+            //===POS================//===NORMAL=========//===UV======//===COLOUR=========
+            {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+            {{+0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+            {{+0.5f, +0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
+            {{-0.5f, +0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
+    };
 
-    constexpr uint32_t PLANE_VERTEX_COUNT = 4;
-    CoreVertex vertexData[PLANE_VERTEX_COUNT] = {v0, v1, v2, v3};
-
-    constexpr uint32_t PLANE_INDEX_COUNT = 6;
-    uint32_t indexData[PLANE_INDEX_COUNT] = {
+    uint32_t indexData[6] = {
         0, 1, 2, 2, 3, 0
     };
 
-    CoreRawMesh rawMesh = {
+    const CoreRawMesh rawMesh = {
         .vertexData = &vertexData[0],
         .indexData = &indexData[0],
-        .vertexCount = PLANE_VERTEX_COUNT,
-        .indexCount = PLANE_INDEX_COUNT,
+        .vertexCount = 4,
+        .indexCount = 6,
     };
 
     return gfx_mesh_load_from_memory(rawMesh);

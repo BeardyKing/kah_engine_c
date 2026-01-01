@@ -156,7 +156,7 @@ GfxMeshHandle gfx_mesh_built_in_quad(){
 }
 
 GfxMeshHandle gfx_mesh_built_in_cube(){
-    return s_builtIn.meshes.quad;
+    return s_builtIn.meshes.cube;
 }
 
 static struct GfxFeatures{

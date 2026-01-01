@@ -50,8 +50,7 @@ void main() {
     }
     else{
         uint imageIndex = pushConstants.bindlessImageIndex;
-        vec2 uv = {0.5f, 0.5f};
-    	vec4 texCol = sampleTexture2DLinear(imageIndex, uv);
+    	vec4 texCol = sampleTexture2DLinear(imageIndex, stageIn.uv);
     	outFragColor = texCol;
     }
 }

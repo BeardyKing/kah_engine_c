@@ -7,6 +7,8 @@ add_executable(kah_game
         src/widgets/widget_manager.c
         inc/client/entity_builder.h
         src/entity_builder.c
+        inc/client/widgets/widget_pool_inspector.h
+        src/widgets/widget_pool_inspector.c
 )
 
 

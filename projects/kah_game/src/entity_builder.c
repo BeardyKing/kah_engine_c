@@ -10,6 +10,7 @@
 //===INTERNAL==================================================================
 static CameraEntityHandle s_primaryCamEnt;
 static LitEntityHandle s_defaultCube;
+static LitEntityHandle s_defaultQuad;
 
 static void entity_primary_camera_create(){
     s_primaryCamEnt = gfx_pool_camera_entity_handle_get_next();
@@ -40,17 +41,37 @@ static void entity_primary_camera_cleanup(){
 
 static void entity_lit_create(){
     s_defaultCube = gfx_pool_lit_entity_handle_get_next();
-    LitEntity* litEnt = gfx_pool_lit_entity_get(s_defaultCube);
-    litEnt->transformIndex = gfx_pool_transform_handle_get_next();
-    litEnt->meshIndex = gfx_mesh_built_in_cube();
-    litEnt->materialIndex = gfx_pool_lit_material_handle_get_next();
-    sprintf(litEnt->debug_name, "default cube");
+    {
+        LitEntity* litEnt = gfx_pool_lit_entity_get(s_defaultCube);
+        litEnt->transformIndex = gfx_pool_transform_handle_get_next();
+        litEnt->meshIndex = gfx_mesh_built_in_cube();
+        litEnt->materialIndex = gfx_pool_lit_material_handle_get_next();
+        sprintf(litEnt->debug_name, "default cube");
 
-    Transform* litTransform = gfx_pool_transform_get(litEnt->transformIndex);
-    *litTransform = transform_default();
+        Transform* litTransform = gfx_pool_transform_get(litEnt->transformIndex);
+        *litTransform = transform_default();
 
-    LitMaterial* litMaterial = gfx_pool_lit_material_get(litEnt->materialIndex);
-    litMaterial->albedoImageIndex = gfx_texture_built_in_uv_grid();
+        LitMaterial* litMaterial = gfx_pool_lit_material_get(litEnt->materialIndex);
+        litMaterial->albedoImageIndex = gfx_texture_built_in_uv_grid();
+    }
+
+    s_defaultQuad = gfx_pool_lit_entity_handle_get_next();
+    {
+        LitEntity* litEnt = gfx_pool_lit_entity_get(s_defaultQuad);
+        litEnt->transformIndex = gfx_pool_transform_handle_get_next();
+        litEnt->meshIndex = gfx_mesh_built_in_quad();
+        litEnt->materialIndex = gfx_pool_lit_material_handle_get_next();
+        sprintf(litEnt->debug_name, "default quad");
+
+        Transform* litTransform = gfx_pool_transform_get(litEnt->transformIndex);
+        *litTransform = transform_default();
+        litTransform->position.x += 1;
+        litTransform->position.z += 1;
+        litTransform->rotation.y = -90.0f;
+
+        LitMaterial* litMaterial = gfx_pool_lit_material_get(litEnt->materialIndex);
+        litMaterial->albedoImageIndex = gfx_texture_built_in_uv_grid();
+    }
 }
 
 static void entity_lit_cleanup(){

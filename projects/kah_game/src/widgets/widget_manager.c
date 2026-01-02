@@ -4,6 +4,7 @@
 
 //===INCLUDES==================================================================
 #include <client/widgets/widget_manager.h>
+#include <client/widgets/widget_pool_inspector.h>
 
 #include <kah_core/assert.h>
 #include <kah_core/allocators.h>
@@ -30,6 +31,7 @@ enum WidgetType {
     KAH_WIDGET_ACTIVE_WIDGETS_MENU = 0,
     KAH_WIDGET_TOOLBAR_NAV_MENU,
     KAH_WIDGET_CVARS,
+    KAH_WIDGET_POOL_INSPECTOR,
     KAH_WIDGET_IMAGE_DIFF,
     KAH_WIDGET_IMGUI_DEMO_MENU,
 
@@ -139,6 +141,13 @@ static void widget_cvar_update(){
             cvar_debug_vec2i("windowPosition", g_coreCvars.windowPosition);
             ImGui_End();
         }
+    }
+}
+
+static void internal_widget_pool_inspector_update(){
+    WidgetInfo* poolInspectorWidget = &s_widgetTable[KAH_WIDGET_POOL_INSPECTOR];
+    if (poolInspectorWidget->isActive){
+        widget_pool_inspector_update();
     }
 }
 
@@ -279,6 +288,7 @@ void widget_manager_update(){
     widget_toolbar_update();
     widget_state_update();
     widget_cvar_update();
+    internal_widget_pool_inspector_update();
     widget_image_differ_update();
     widget_imgui_demo_update();
 }
@@ -290,15 +300,19 @@ void widget_manager_create(){
     s_widgetTable[KAH_WIDGET_ACTIVE_WIDGETS_MENU]   = (WidgetInfo){ .isActive = false,  .name = "Active Widgets Menu",   .toolbarTabName = "Editor"};
     s_widgetTable[KAH_WIDGET_TOOLBAR_NAV_MENU]      = (WidgetInfo){ .isActive = true,   .name = "Navigation bar"},
     s_widgetTable[KAH_WIDGET_CVARS]                 = (WidgetInfo){ .isActive = false,  .name = "Console Variabe debug", .toolbarTabName = "Debug Tools",    .shortcut = "`"};
+    s_widgetTable[KAH_WIDGET_POOL_INSPECTOR]        = (WidgetInfo){ .isActive = true,   .name = "Pool inspector",        .toolbarTabName = "Editor"};
     s_widgetTable[KAH_WIDGET_IMAGE_DIFF]            = (WidgetInfo){ .isActive = false,  .name = "Image differ",          .toolbarTabName = "Debug Tools"};
     s_widgetTable[KAH_WIDGET_IMGUI_DEMO_MENU]       = (WidgetInfo){ .isActive = true,   .name = "Imgui Demo Menu",       .toolbarTabName = "Debug Tools" };
 
     widget_image_differ_create();
+    widget_pool_inspector_create();
 }
 
 void widget_manager_cleanup(){
     memset(s_widgetTable, 0, sizeof(s_widgetTable));
 
+
+    widget_pool_inspector_cleanup();
     widget_image_differ_cleanup();
 }
 //=============================================================================

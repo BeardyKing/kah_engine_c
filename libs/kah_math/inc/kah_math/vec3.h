@@ -3,6 +3,7 @@
 
 //===INCLUDES==================================================================
 #include <kah_math/defines.h>
+#include <kah_math/math_assert.h>
 //=============================================================================
 
 //===API=======================================================================
@@ -50,12 +51,16 @@ MATH_FORCE_INLINE void vec3f_mul(vec3f* dest, const vec3f* v){
 }
 
 MATH_FORCE_INLINE void vec3f_div(vec3f* dest, const vec3f* v){
+    math_assert(v->x != 0.0f);
+    math_assert(v->y != 0.0f);
+    math_assert(v->z != 0.0f);
     dest->x /= v->x;
     dest->y /= v->y;
     dest->z /= v->z;
 }
 
 MATH_FORCE_INLINE void vec3f_mul_s(vec3f* dest, const float scalar){
+    math_assert(scalar != 0.0f);
     dest->x *= scalar;
     dest->y *= scalar;
     dest->z *= scalar;
@@ -85,6 +90,7 @@ MATH_FORCE_INLINE float vec3f_mag(const vec3f* a){
 
 MATH_FORCE_INLINE void vec3f_norm(vec3f* dest){
     float magnitude = vec3f_mag(dest);
+    math_assert(magnitude != 0.0f);
     vec3f_div_s(dest, magnitude);
 }
 

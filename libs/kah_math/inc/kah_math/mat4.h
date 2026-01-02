@@ -3,6 +3,7 @@
 
 //===INCLUDES==================================================================
 #include <kah_math/defines.h>
+#include <kah_math/math_assert.h>
 #include <kah_math/vec3.h>
 #include <kah_math/vec4.h>
 //=============================================================================
@@ -112,10 +113,7 @@ MATH_FORCE_INLINE void mat4f_mul2(mat4f* dest, const mat4f* m1, const mat4f* m2)
 }
 
 MATH_FORCE_INLINE void mat4f_rotate_axis(mat4f* dest, const vec3f* axis, const float angle){
-    // TODO: replace with math_assert(vec3f_mag(axis) != 0.0f);
-    if(vec3f_mag(axis) == 0.0f){
-        return;
-    }
+    math_assert(vec3f_mag(axis) != 0.0f);
     vec3f n = *axis;
     vec3f_norm(&n);
 
@@ -138,10 +136,7 @@ MATH_FORCE_INLINE void mat4f_rotate_axis(mat4f* dest, const vec3f* axis, const f
 }
 
 MATH_FORCE_INLINE void mat4f_perspective_rh_zero_to_one( mat4f* dest, const float fovy, const float aspect, const float zNear, const float zFar){
-    // TODO: replace with math_assert
-    if(fabsf(aspect) <= 1e-6f){
-        return;
-    }
+    math_assert(fabsf(aspect) >= 1e-6f);
 
     const float tanHalfFovy = tan(fovy / 2.0f);
 
@@ -154,10 +149,7 @@ MATH_FORCE_INLINE void mat4f_perspective_rh_zero_to_one( mat4f* dest, const floa
 }
 
 MATH_FORCE_INLINE void mat4f_perspective_rh_minus_one_to_one( mat4f* dest, const float fovy, const float aspect, const float zNear, const float zFar){
-    // TODO: replace with math_assert
-    if(fabsf(aspect) <= 1e-6f){
-        return;
-    }
+    math_assert(fabsf(aspect) >= 1e-6f);
 
     const float tanHalfFovy = tan(fovy / 2.0f);
 
@@ -168,7 +160,5 @@ MATH_FORCE_INLINE void mat4f_perspective_rh_minus_one_to_one( mat4f* dest, const
     dest->col[2].w = - 1.0f;
     dest->col[3].z = - (2.0f * zFar * zNear) / (zFar - zNear);
 }
-
-
 
 #endif //MAT4_H

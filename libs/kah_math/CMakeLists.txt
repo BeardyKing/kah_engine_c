@@ -14,6 +14,8 @@ add_library(kah_math
         inc/kah_math/print.h
         src/print.c
         inc/kah_math/transform.h
+        inc/kah_math/math_assert.h
+        src/math_assert.c
 )
 
 target_include_directories(kah_math

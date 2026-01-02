@@ -50,9 +50,9 @@ MATH_FORCE_INLINE void vec3f_mul(vec3f* dest, const vec3f* v){
 }
 
 MATH_FORCE_INLINE void vec3f_div(vec3f* dest, const vec3f* v){
-    dest->x *= v->x;
-    dest->y *= v->y;
-    dest->z *= v->z;
+    dest->x /= v->x;
+    dest->y /= v->y;
+    dest->z /= v->z;
 }
 
 MATH_FORCE_INLINE void vec3f_mul_s(vec3f* dest, const float scalar){

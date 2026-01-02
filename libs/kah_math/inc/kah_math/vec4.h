@@ -69,10 +69,10 @@ MATH_FORCE_INLINE void vec4f_mul(vec4f* dest, const vec4f* v){
 }
 
 MATH_FORCE_INLINE void vec4f_div(vec4f* dest, const vec4f* v){
-    dest->x *= v->x;
-    dest->y *= v->y;
-    dest->z *= v->z;
-    dest->w *= v->w;
+    dest->x /= v->x;
+    dest->y /= v->y;
+    dest->z /= v->z;
+    dest->w /= v->w;
 }
 
 MATH_FORCE_INLINE void vec4f_mul_s(vec4f* dest, const float scalar){

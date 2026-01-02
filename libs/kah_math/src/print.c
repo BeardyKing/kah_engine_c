@@ -18,4 +18,15 @@ void print_mat4f(const mat4f* m){
         m->col[0].w, m->col[1].w, m->col[2].w, m->col[3].w
     );
 }
+
+void print_transform(const Transform* t){
+    printf(
+        "P:%.2f\t%.2f\t%.2f\n"
+        "R:%.2f\t%.2f\t%.2f\n"
+        "S:%.2f\t%.2f\t%.2f\n",
+        t->position.x, t->position.y, t->position.z,
+        t->rotation.x, t->rotation.y, t->rotation.z,
+        t->scale.x, t->scale.y, t->scale.z
+    );
+}
 //=============================================================================

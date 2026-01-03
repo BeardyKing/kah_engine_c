@@ -121,7 +121,6 @@ static struct GfxDebug {
 } s_gfxDebug = {};
 
 static struct GfxUserArguments {
-    uint32_t selectedPhysicalDeviceIndex;
     bool vsync;
     VkSampleCountFlagBits msaa;
 } s_userArguments = {};
@@ -185,7 +184,6 @@ static void gfx_data_structures_create(){
     s_gfx = (struct GfxBackend){};
     s_gfxDebug = (struct GfxDebug){};
     s_userArguments = (struct GfxUserArguments){ //TODO: replace with quake style CVAR system
-        .selectedPhysicalDeviceIndex = 0,
         .vsync = true,
         .msaa = VK_SAMPLE_COUNT_1_BIT
     };
@@ -548,8 +546,11 @@ static void gfx_physical_device_create(){
 
     debug_print_supported_physical_devices_info();
 
-    // TODO:GFX: Add fallback support for `best` GPU based on intended workload, if no argument is provided we fallback to device [0]
-    uint32_t selectedDevice = s_userArguments.selectedPhysicalDeviceIndex;
+    int32_t selectedDevice = i32_cvar_get(g_coreCvars.gfx_gpuSelection);
+    if (selectedDevice == -1) {
+        // TODO:GFX: Add fallback support for `best` GPU based on intended workload, if no argument is provided we fallback to device [0]
+        selectedDevice = 0;
+    }
     core_assert_msg(selectedDevice < s_gfx.supportedphysicalDevices.count, "err: selecting physical vulkan device that is out of range");
     g_gfx.physicalDevice = physicalDevices[selectedDevice];
 

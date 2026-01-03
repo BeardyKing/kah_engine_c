@@ -6,6 +6,7 @@
 struct CoreCVars {
     vec2i_cvar_t* windowSize;
     vec2i_cvar_t* windowPosition;
+    i32_cvar_t* gfx_gpuSelection;
 } typedef CoreCVars;
 
 extern CoreCVars g_coreCvars;

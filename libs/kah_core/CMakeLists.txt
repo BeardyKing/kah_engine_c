@@ -43,6 +43,8 @@ add_library(kah_core
         src/cvar.c
         inc/kah_core/core_cvars.h
         src/core_cvars.c
+        src/filesystem_linux.c
+        src/window_linux.c
 )
 
 target_include_directories(kah_core

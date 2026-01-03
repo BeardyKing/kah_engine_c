@@ -40,6 +40,7 @@ add_library(kah_gfx
         inc/kah_gfx/gfx_types.h
         inc/kah_gfx/vulkan/gfx_vulkan_uniform_buffers.h
         src/gfx_vulkan_uniform_buffers.c
+        src/vulkan/gfx_vulkan_surface_linux.c
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
@@ -56,9 +57,11 @@ endif()
 
 find_package(Vulkan QUIET)
 if(TARGET Vulkan::Vulkan)
+    message("kah_gfx: using Vulkan_INCLUDE_DIRS from FindVulkan module")
     # Note: We don't use target_link_libraries for Vulkan::Vulkan to avoid a static dependency on libvulkan1
     target_include_directories(kah_gfx PRIVATE ${Vulkan_INCLUDE_DIRS})
 elseif(DEFINED ENV{VULKAN_SDK})
+    message("kah_gfx: using VULKAN_SDK environment variable")
     target_include_directories(kah_gfx PRIVATE "$ENV{VULKAN_SDK}/include")
 endif()
 

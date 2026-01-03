@@ -3,6 +3,8 @@
 #include <kah_gfx/vulkan/gfx_vulkan_buffer.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/gfx_pool.h>
+
+#include <string.h>
 //=============================================================================
 
 //===API=======================================================================

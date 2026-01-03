@@ -22,8 +22,15 @@
 
 #define FEATURE_RUN_TESTS FEATURE_OFF
 #define FEATURE_ASSERTS CHECK_FEATURE(KAH_DEBUG)
+
+#if defined(_WIN32) || defined(_WIN64)
 #define FEATURE_GFX_IMGUI FEATURE_ON
 #define FEATURE_CONVERT_ON_DEMAND FEATURE_ON
+#elif defined(__linux__)
+#define FEATURE_GFX_IMGUI FEATURE_OFF
+#define FEATURE_CONVERT_ON_DEMAND FEATURE_OFF
+#endif
+
 //=============================================================================
 
 //===IMPL======================================================================

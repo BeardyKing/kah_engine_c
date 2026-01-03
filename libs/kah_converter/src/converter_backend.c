@@ -21,7 +21,7 @@ static void c_str_n_copy(char *dst, const char *src, size_t max) {
 
 static void c_str_n_copy_env(char *dst, const char *envName, size_t max) {
     const char *val = getenv(envName);
-    core_assert_msg(val != nullptr,"err: environment variable missing");
+    core_assert_msg(val != nullptr,"err: environment variable '$%s' is not set", envName);
     c_str_n_copy(dst, val, max);
 }
 //=============================================================================

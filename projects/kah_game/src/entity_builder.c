@@ -2,6 +2,7 @@
 #include <client/entity_builder.h>
 
 #include <kah_gfx/gfx_pool.h>
+#include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 
 #include <stdio.h>
@@ -11,6 +12,7 @@
 static CameraEntityHandle s_primaryCamEnt;
 static LitEntityHandle s_defaultCube;
 static LitEntityHandle s_defaultQuad;
+static LitEntityHandle s_defaultOctahedron;
 
 static void entity_primary_camera_create(){
     s_primaryCamEnt = gfx_pool_camera_entity_handle_get_next();
@@ -30,6 +32,8 @@ static void entity_primary_camera_create(){
     cam->fov = 65.0f;
     cam->zNear = 0.1f;
     cam->zFar = 6000.0f;
+
+    gfx_camera_main_set_active(s_primaryCamEnt);
 }
 
 static void entity_primary_camera_cleanup(){
@@ -71,6 +75,25 @@ static void entity_lit_create(){
 
         LitMaterial* litMaterial = gfx_pool_lit_material_get(litEnt->materialIndex);
         litMaterial->albedoImageIndex = gfx_texture_built_in_uv_grid();
+    }
+
+    s_defaultOctahedron = gfx_pool_lit_entity_handle_get_next();
+    {
+        LitEntity* litEnt = gfx_pool_lit_entity_get(s_defaultOctahedron);
+        litEnt->transformIndex = gfx_pool_transform_handle_get_next();
+        litEnt->meshIndex = gfx_mesh_built_in_octahedron();
+        litEnt->materialIndex = gfx_pool_lit_material_handle_get_next();
+        sprintf(litEnt->debug_name, "default octahedron");
+
+        Transform* litTransform = gfx_pool_transform_get(litEnt->transformIndex);
+        *litTransform = transform_default();
+        litTransform->position.x += 1;
+        litTransform->position.y += 1;
+        litTransform->position.z += 1;
+        litTransform->rotation.y = -90.0f;
+
+        LitMaterial* litMaterial = gfx_pool_lit_material_get(litEnt->materialIndex);
+        litMaterial->albedoImageIndex = gfx_texture_built_in_uv_grid_octahedral();
     }
 }
 

@@ -19,9 +19,11 @@ VkPhysicalDeviceMemoryProperties gfx_get_device_memory_properties();
 GfxTextureHandle gfx_texture_built_in_black();
 GfxTextureHandle gfx_texture_built_in_white();
 GfxTextureHandle gfx_texture_built_in_uv_grid();
+GfxTextureHandle gfx_texture_built_in_uv_grid_octahedral();
 
 GfxMeshHandle gfx_mesh_built_in_quad();
 GfxMeshHandle gfx_mesh_built_in_cube();
+GfxMeshHandle gfx_mesh_built_in_octahedron();
 //=============================================================================
 
 //===COMMAND_BUFFER============================================================

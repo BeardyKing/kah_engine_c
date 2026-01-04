@@ -1,5 +1,7 @@
 //===INCLUDES==================================================================
 #include <client/widgets/widget_manager.h>
+#include <client/entity_builder.h>
+#include <client/scripts/script_manager.h>
 
 #include <kah_core/defines.h>
 #include <kah_core/allocators.h>
@@ -15,14 +17,7 @@
 
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
-
-#include <kah_math/print.h>
-#include <kah_math/transform.h>
-
-#include <client/entity_builder.h>
-#include <kah_gfx/gfx_types.h>
 //=============================================================================
-
 
 int main(int argc, char** argv){
     fs_create(argc, argv);
@@ -51,6 +46,7 @@ int main(int argc, char** argv){
             gfx_imgui_begin();
             widget_manager_update();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
+            script_manager_update();
             gfx_update();
         }
 

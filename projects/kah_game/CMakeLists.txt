@@ -9,6 +9,10 @@ add_executable(kah_game
         src/entity_builder.c
         inc/client/widgets/widget_pool_inspector.h
         src/widgets/widget_pool_inspector.c
+        inc/client/scripts/script_camera.h
+        src/scripts/script_camera.c
+        inc/client/scripts/script_manager.h
+        src/scripts/script_manager.c
 )
 
 

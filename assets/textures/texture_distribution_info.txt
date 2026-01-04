@@ -1,14 +1,14 @@
 UV_Grid_test
-    File:          UV_Grid_test
-    Dir:           assets/textures/UV_Grid
+    File:          uv_grid_standard
+    Dir:           assets/textures/built_in
     Format:        .png
     Licence:       Attribution-ShareAlike
     Licence Link:  https://creativecommons.org/licenses/by-sa/4.0/
     Author:        Kingsley Hopking
 
 oct_map_test
-    File:          oct_map_test
-    Dir:           assets/textures/oct_map
+    File:          uv_grid_octahedral
+    Dir:           assets/textures/built_in
     Format:        .png
     Licence:       Attribution-ShareAlike
     Licence Link:  https://creativecommons.org/licenses/by-sa/4.0/

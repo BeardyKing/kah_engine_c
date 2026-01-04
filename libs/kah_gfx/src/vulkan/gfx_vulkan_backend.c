@@ -120,6 +120,10 @@ static struct GfxDebug {
     VkDebugUtilsMessengerEXT debugUtilsMessenger;
 } s_gfxDebug = {};
 
+static struct GfxCameraInfo{
+    CameraEntityHandle activeMainCamera;
+} s_gfxCameraInfo = {};
+
 static struct GfxUserArguments {
     bool vsync;
     VkSampleCountFlagBits msaa;
@@ -129,14 +133,25 @@ static struct BuiltIns{
     struct{
         GfxTextureHandle black;
         GfxTextureHandle white;
-        GfxTextureHandle uvGrid;
+        GfxTextureHandle uvGridStandard;
+        GfxTextureHandle uvGridOctahedral;
     }textures;
 
     struct{
         GfxMeshHandle quad;
         GfxMeshHandle cube;
+        GfxMeshHandle octahedron;
     }meshes;
 } s_builtIn;
+
+void gfx_camera_main_set_active(CameraEntityHandle camHandle){
+    s_gfxCameraInfo.activeMainCamera = camHandle;
+}
+
+CameraEntityHandle gfx_camera_main_get_active(){
+    core_assert(s_gfxCameraInfo.activeMainCamera != GFX_POOL_NULL_HANDLE);
+    return s_gfxCameraInfo.activeMainCamera;
+}
 
 GfxTextureHandle gfx_texture_built_in_black(){
     return s_builtIn.textures.black;
@@ -147,7 +162,11 @@ GfxTextureHandle gfx_texture_built_in_white(){
 }
 
 GfxTextureHandle gfx_texture_built_in_uv_grid(){
-    return s_builtIn.textures.uvGrid;
+    return s_builtIn.textures.uvGridStandard;
+}
+
+GfxTextureHandle gfx_texture_built_in_uv_grid_octahedral(){
+    return s_builtIn.textures.uvGridOctahedral;
 }
 
 GfxMeshHandle gfx_mesh_built_in_quad(){
@@ -156,6 +175,10 @@ GfxMeshHandle gfx_mesh_built_in_quad(){
 
 GfxMeshHandle gfx_mesh_built_in_cube(){
     return s_builtIn.meshes.cube;
+}
+
+GfxMeshHandle gfx_mesh_built_in_octahedron(){
+    return s_builtIn.meshes.octahedron;
 }
 
 static struct GfxFeatures{
@@ -183,6 +206,9 @@ static Allocator gfx_allocator_arena(){ return allocators()->arena;}   // TODO: 
 static void gfx_data_structures_create(){
     s_gfx = (struct GfxBackend){};
     s_gfxDebug = (struct GfxDebug){};
+    s_gfxCameraInfo = (struct GfxCameraInfo){
+        .activeMainCamera = GFX_POOL_NULL_HANDLE
+    };
     s_userArguments = (struct GfxUserArguments){ //TODO: replace with quake style CVAR system
         .vsync = true,
         .msaa = VK_SAMPLE_COUNT_1_BIT
@@ -990,36 +1016,43 @@ static void gfx_pipeline_cache_create(){
 static void gfx_mesh_builtin_create(){
     s_builtIn.meshes.quad = gfx_mesh_build_quad();
     s_builtIn.meshes.cube = gfx_mesh_build_cube();
+    s_builtIn.meshes.octahedron = gfx_mesh_build_octahedron();
 }
 
 static void gfx_mesh_builtin_cleanup(){
     gfx_mesh_cleanup(s_builtIn.meshes.quad);
     gfx_mesh_cleanup(s_builtIn.meshes.cube);
+    gfx_mesh_cleanup(s_builtIn.meshes.octahedron);
 }
 
 static void gfx_texture_builtin_create(){
     //TODO: Add wrapper bindless function to GfxTexture.
-    s_builtIn.textures.black = gfx_texture_load_from_file("assets/textures/black.dds");
-    s_builtIn.textures.white = gfx_texture_load_from_file("assets/textures/white.dds");
-    s_builtIn.textures.uvGrid = gfx_texture_load_from_file("assets/textures/UV_Grid/UV_Grid_test.dds");
+    s_builtIn.textures.black = gfx_texture_load_from_file("assets/textures/built_in/black.dds");
+    s_builtIn.textures.white = gfx_texture_load_from_file("assets/textures/built_in/white.dds");
+    s_builtIn.textures.uvGridStandard = gfx_texture_load_from_file("assets/textures/built_in/uv_grid_standard.dds");
+    s_builtIn.textures.uvGridOctahedral = gfx_texture_load_from_file("assets/textures/built_in/uv_grid_octahedral.dds");
 
     GfxTexture* blackTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.black);
     GfxTexture* whiteTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.white);
-    GfxTexture* uvGridTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.uvGrid);
+    GfxTexture* uvGridTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.uvGridStandard);
+    GfxTexture* uvGridOctahedralTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.uvGridOctahedral);
 
     blackTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_BLACK;
     whiteTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_WHITE;
     uvGridTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV;
+    uvGridOctahedralTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV_OCTAHEDRAL;
 
     gfx_bindless_set_image(blackTexture->bindlessIndex, blackTexture->imageView);
     gfx_bindless_set_image(whiteTexture->bindlessIndex, whiteTexture->imageView);
     gfx_bindless_set_image(uvGridTexture->bindlessIndex, uvGridTexture->imageView);
+    gfx_bindless_set_image(uvGridOctahedralTexture->bindlessIndex, uvGridOctahedralTexture->imageView);
 }
 
 static void gfx_texture_builtin_cleanup(){
     gfx_texture_cleanup(s_builtIn.textures.black);
     gfx_texture_cleanup(s_builtIn.textures.white);
-    gfx_texture_cleanup(s_builtIn.textures.uvGrid);
+    gfx_texture_cleanup(s_builtIn.textures.uvGridStandard);
+    gfx_texture_cleanup(s_builtIn.textures.uvGridOctahedral);
 }
 
 static void gfx_pipeline_cache_cleanup(){
@@ -1241,7 +1274,8 @@ static bool gfx_check_window_needs_resize(VkResult result){
 }
 
 static void gfx_scene_ubo_update(){
-    CameraEntity* camEnt = gfx_pool_camera_entity_get(0); //TODO: Replae hardcoded 0 with a current cam ent index func.
+    CameraEntityHandle activeCameraHandle = gfx_camera_main_get_active();
+    CameraEntity* camEnt = gfx_pool_camera_entity_get(activeCameraHandle);
     Transform* camTransform = gfx_pool_transform_get(camEnt->transformIndex);
     Camera* cam = gfx_pool_camera_get(camEnt->transformIndex);
 

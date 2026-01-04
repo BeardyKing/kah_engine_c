@@ -7,17 +7,18 @@
 //=============================================================================
 
 //===API=======================================================================
-//void  vec3f_add       (   vec3f* dest,    const vec3f* v                      )
-//void  vec3f_sub       (   vec3f* dest,    const vec3f* v                      )
-//void  vec3f_mul       (   vec3f* dest,    const vec3f* v                      )
-//void  vec3f_div       (   vec3f* dest,    const vec3f* v                      )
-//void  vec3f_div_s     (   vec3f* dest,    const float scalar                  )
-//void  vec3f_mul_add   (   vec3f* dest,    const vec3f* a,     const vec3f* b  )
-//void  vec3f_mul_add_s (   vec3f* dest,    const float scalar, const vec3f* v  )
-//void  vec3f_norm      (   vec3f* dest                                         )
-//void  vec3f_cross2    (   vec3f* dest,    const vec3f* a,     const vec3f* b  )
-//float vec3f_dot       (   const vec3f* a, const vec3f* b                      )
-//float vec3f_mag       (   const vec3f* a                                      )
+//void  vec3f_add       (   vec3f* dest,    const vec3f* v                          )
+//void  vec3f_sub       (   vec3f* dest,    const vec3f* v                          )
+//void  vec3f_mul       (   vec3f* dest,    const vec3f* v                          )
+//void  vec3f_div       (   vec3f* dest,    const vec3f* v                          )
+//void  vec3f_div_s     (   vec3f* dest,    const float scalar                      )
+//void  vec3f_mul_add   (   vec3f* dest,    const vec3f* a,     const vec3f* b      )
+//void  vec3f_mul_add_s (   vec3f* dest,    const float scalar, const vec3f* v      )
+//void  vec3f_norm      (   vec3f* dest                                             )
+//void  vec3f_cross2    (   vec3f* dest,    const vec3f* a,     const vec3f* b      )
+//void  vec3f_scale     (   vec3f* dest,    const vec3f* v,     const float scalar  )
+//float vec3f_dot       (   const vec3f* a, const vec3f* b                          )
+//float vec3f_mag       (   const vec3f* a                                          )
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -26,9 +27,11 @@ union vec3f{
     struct{ float r, g, b; };
 } typedef vec3f;
 
-#define VEC3F_WORLD_UP      ((vec3f){ 0.0f, 1.0f,  0.0f })
-#define VEC3F_WORLD_RIGHT   ((vec3f){ 1.0f, 0.0f,  0.0f })
-#define VEC3F_WORLD_FORWARD ((vec3f){ 0.0f, 0.0f, -1.0f })
+#define VEC3F_ZERO          ((vec3f){  0.0f, 0.0f,  0.0f })
+#define VEC3F_ONE           ((vec3f){  1.0f, 1.0f,  1.0f })
+#define VEC3F_WORLD_UP      ((vec3f){  0.0f, 1.0f,  0.0f })
+#define VEC3F_WORLD_RIGHT   ((vec3f){ -1.0f, 0.0f,  0.0f })
+#define VEC3F_WORLD_FORWARD ((vec3f){  0.0f, 0.0f, -1.0f })
 //=============================================================================
 
 //===INLINE====================================================================
@@ -82,6 +85,12 @@ MATH_FORCE_INLINE void vec3f_mul_add_s(vec3f* dest, const float scalar, const ve
     dest->x += v->x * scalar;
     dest->y += v->y * scalar;
     dest->z += v->z * scalar;
+}
+
+MATH_FORCE_INLINE void vec3f_scale(vec3f* dest, const vec3f* v, const float scalar){
+    dest->x = v->x * scalar;
+    dest->y = v->y * scalar;
+    dest->z = v->z * scalar;
 }
 
 MATH_FORCE_INLINE float vec3f_mag(const vec3f* a){

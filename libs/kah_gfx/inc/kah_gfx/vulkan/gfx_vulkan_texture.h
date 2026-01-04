@@ -14,6 +14,7 @@ void gfx_texture_cleanup(GfxTextureHandle handle);
 #define KAH_BINDLESS_TEXTURE_BLACK 0
 #define KAH_BINDLESS_TEXTURE_WHITE 1
 #define KAH_BINDLESS_TEXTURE_UV 2
+#define KAH_BINDLESS_TEXTURE_UV_OCTAHEDRAL 3
 //=============================================================================
 
 #endif //GFX_VULKAN_TEXTURE_H

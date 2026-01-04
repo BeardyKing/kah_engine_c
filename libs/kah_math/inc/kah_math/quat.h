@@ -6,11 +6,15 @@
 //=============================================================================
 
 //===API=======================================================================
-// void quat_from_euler (   quat* dest,     const vec3f* euler  )
-// void quat_to_euler   (   vec3f* dest,    const quat* q       )
-// void quat_to_mat4f   (   mat4f* dest,    const quat* q       )
-// void quat_conjugate  (   quat* dest                          )
-// void quat_conjugate2 (   quat* dest,     const quat* q       )
+// void  quat_from_euler    (   quat* dest,     const vec3f* euler             )
+// void  quat_to_euler      (   vec3f* dest,    const quat* q                  )
+// void  quat_to_mat4f      (   mat4f* dest,    const quat* q                  )
+// void  quat_conjugate     (   quat* dest                                     )
+// void  quat_conjugate2    (   quat* dest,     const quat* q                  )
+// void  quat_norm          (   quat* q                                        )
+// void  quat_imaginary     (   vec3f* dest,    const quat* q                  )
+// void  quat_rotate_vec3f  (   vec3f* dest,    const quat* q,  const vec3f* v )
+// float quat_real          (   const quat* q                                  )
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -83,6 +87,47 @@ MATH_FORCE_INLINE void quat_conjugate2(quat* dest, const quat* q){
         .z = -q->z,
         .w = q->w,
     };
+}
+
+MATH_FORCE_INLINE void quat_norm(quat* q) {
+    const float sqMag = vec4f_mag_sq(q);
+
+    if (sqMag <= 0.0f) {
+        *q = QUAT_IDENTITY;
+        return;
+    }
+
+    vec4f_mul_s(q, 1.0f / sqrtf(sqMag));
+}
+
+MATH_FORCE_INLINE void quat_imaginary(vec3f* dest, const quat* q) {
+    dest->x = q->x;
+    dest->y = q->y;
+    dest->z = q->z;
+}
+
+MATH_FORCE_INLINE float quat_real(const quat* q) {
+    return q->w;
+}
+
+MATH_FORCE_INLINE void quat_rotate_vec3f(vec3f* dest, const quat* q, const vec3f* v) {
+    vec3f u, v1, v2;
+
+    quat p = *q;
+    quat_norm(&p);
+    quat_imaginary(&u, &p);
+    const float s = quat_real(&p);
+
+    vec3f_scale(&v1, &u, 2.0f * vec3f_dot(&u, v));
+    vec3f_scale(&v2, v, s * s - vec3f_dot(&u, &u));
+    vec3f_add(&v1, &v2);
+
+    vec3f_cross2(&v2, &u, v);
+    vec3f_scale(&v2, &v2, 2.0f * s);
+
+    *dest = VEC3F_ZERO;
+    vec3f_add(dest, &v1);
+    vec3f_add(dest, &v2);
 }
 //=============================================================================
 

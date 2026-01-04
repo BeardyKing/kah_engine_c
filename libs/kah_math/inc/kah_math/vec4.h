@@ -10,16 +10,18 @@
 //uint32_t  vec4f_pack_to_uint32_t      (   const vec4f* vec            )
 //vec4f     vec4f_unpack_from_uint32_t  (   const uint32_t packedValue  )
 
-//void      vec4f_add       (   vec4f* dest,    const vec4f* v                      )
-//void      vec4f_sub       (   vec4f* dest,    const vec4f* v                      )
-//void      vec4f_mul       (   vec4f* dest,    const vec4f* v                      )
-//void      vec4f_div       (   vec4f* dest,    const vec4f* v                      )
-//void      vec4f_mul_s     (   vec4f* dest,    const float scalar                  )
-//void      vec4f_div_s     (   vec4f* dest,    const float scalar                  )
-//void      vec4f_mul_add   (   vec4f* dest,    const vec4f* a,     const vec4f* b  )
-//void      vec4f_mul_add_s (   vec4f* dest,    const float scalar, const vec4f* v  )
-//void      vec4f_norm      (   vec4f* dest                                         )
-//float     vec4f_mag       (   const vec4f* v                                      )
+//void      vec4f_add       (   vec4f* dest,    const vec4f* v                          )
+//void      vec4f_sub       (   vec4f* dest,    const vec4f* v                          )
+//void      vec4f_mul       (   vec4f* dest,    const vec4f* v                          )
+//void      vec4f_div       (   vec4f* dest,    const vec4f* v                          )
+//void      vec4f_mul_s     (   vec4f* dest,    const float scalar                      )
+//void      vec4f_div_s     (   vec4f* dest,    const float scalar                      )
+//void      vec4f_mul_add   (   vec4f* dest,    const vec4f* a,     const vec4f* b      )
+//void      vec4f_mul_add_s (   vec4f* dest,    const float scalar, const vec4f* v      )
+//void      vec4f_norm      (   vec4f* dest                                             )
+//void      vec4f_scale     (   vec4f* dest,    const vec4f* v,     const float scalar  )
+//float     vec4f_dot       (   const vec4f* a, const vec4f* b                          )
+//float     vec4f_mag       (   const vec4f* v                                          )
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -109,14 +111,29 @@ MATH_FORCE_INLINE void vec4f_mul_add_s(vec4f* dest, const float scalar, const ve
     dest->w += v->w * scalar;
 }
 
+MATH_FORCE_INLINE float vec4f_dot( const vec4f* a, const vec4f* b ){
+    return a->x * b->x + a->y * b->y + a->z * b->z + a->w * b->w;
+}
+
 MATH_FORCE_INLINE float vec4f_mag(const vec4f* v){
     return sqrtf(v->x * v->x + v->y * v->y + v->z * v->z + v->w * v->w);
+}
+
+MATH_FORCE_INLINE float vec4f_mag_sq(const vec4f* v){
+    return vec4f_dot(v, v);
 }
 
 MATH_FORCE_INLINE void vec4f_norm(vec4f* dest){
     float magnitude = vec4f_mag(dest);
     math_assert(magnitude != 0.0f);
     vec4f_div_s(dest, magnitude);
+}
+
+MATH_FORCE_INLINE void vec4f_scale(vec4f* dest, const vec4f* v, const float scalar){
+    dest->x = v->x * scalar;
+    dest->y = v->y * scalar;
+    dest->z = v->z * scalar;
+    dest->w = v->w * scalar;
 }
 //=============================================================================
 

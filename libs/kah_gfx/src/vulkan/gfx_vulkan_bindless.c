@@ -3,6 +3,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 
 #include <kah_core/assert.h>
+#include <kah_core/bit_array.h>
 
 //===EXTERNAL_STRUCTS==========================================================
 extern GlobalGfx g_gfx;
@@ -14,7 +15,7 @@ static constexpr uint32_t KAH_BINDLESS_POOL_SIZE = 2;
 static constexpr uint32_t KAH_ANISOTROPY_MAX = 16;
 static constexpr uint32_t KAH_MIP_MAP_MAX = 16;
 
-static constexpr uint32_t KAH_BINDLESS_TEXTURE_MAX = 16536;
+static constexpr uint32_t KAH_BINDLESS_TEXTURE_MAX = 16384;
 static constexpr uint32_t KAH_BINDLESS_SAMPLERS_MAX = 32;
 //=============================================================================
 
@@ -28,6 +29,8 @@ static struct GfxBindless{
         VkSampler nearest;
         VkSampler linear;
     }samplers;
+
+    BitArray_16384 freeSlots;
 } s_gfxBindless;
 //=============================================================================
 
@@ -165,7 +168,10 @@ void gfx_bindless_set_sampler(uint32_t samplerIndex, VkSampler sampler){
     vkUpdateDescriptorSets(g_gfx.device, 1, &writeSet, 0, nullptr);
 }
 
+
 void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView){
+    core_assert(bitarray_check_bit(&s_gfxBindless.freeSlots.header, imageIndex) == false);
+    bitarray_set_bit(&s_gfxBindless.freeSlots.header, imageIndex);
     const VkDescriptorImageInfo info = (VkDescriptorImageInfo){ .imageView = imageView, .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL};
     const VkWriteDescriptorSet writeSet = (VkWriteDescriptorSet){
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -178,6 +184,31 @@ void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView){
     };
     vkUpdateDescriptorSets(g_gfx.device, 1, &writeSet, 0, nullptr);
 }
+
+
+void gfx_bindless_image_next_free_slot(GfxTexture* texture){
+    texture->bindlessIndex = bitarray_find_first_unset_bit(&s_gfxBindless.freeSlots.header);
+    core_assert(bitarray_check_bit(&s_gfxBindless.freeSlots.header, texture->bindlessIndex) == false);
+    bitarray_set_bit(&s_gfxBindless.freeSlots.header, texture->bindlessIndex);
+
+    const VkDescriptorImageInfo info = (VkDescriptorImageInfo){ .imageView = texture->imageView, .imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL};
+    const VkWriteDescriptorSet writeSet = (VkWriteDescriptorSet){
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = s_gfxBindless.descriptorSet,
+        .dstBinding = KAH_DESCRIPTOR_SET_BINDING_BINLESS_TEXTURE,
+        .dstArrayElement = texture->bindlessIndex,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+        .pImageInfo = &info,
+    };
+    vkUpdateDescriptorSets(g_gfx.device, 1, &writeSet, 0, nullptr);
+}
+
+void gfx_bindless_free_image(uint32_t imageIndex){
+    core_assert(bitarray_check_bit(&s_gfxBindless.freeSlots.header, imageIndex) == true);
+    bitarray_set_bit(&s_gfxBindless.freeSlots.header, imageIndex);
+}
+
 
 VkSampler gfx_get_sampler_linear(){
     return s_gfxBindless.samplers.linear;
@@ -195,6 +226,8 @@ VkDescriptorSet gfx_bindless_get_descriptor_set(){
 
 //===INIT/SHUTDOWN=============================================================
 void gfx_bindless_create(){
+    memset(s_gfxBindless.freeSlots.buf, 0, sizeof(s_gfxBindless.freeSlots.buf));
+    s_gfxBindless.freeSlots.header.bitCount = KAH_BINDLESS_TEXTURE_MAX;
     gfx_bindless_descriptor_create();
     gfx_samplers_create();
 }
@@ -202,5 +235,6 @@ void gfx_bindless_create(){
 void gfx_bindless_cleanup(){
     gfx_sampler_cleanup();
     gfx_bindless_descriptor_cleanup();
+    memset(s_gfxBindless.freeSlots.buf, 0, sizeof(s_gfxBindless.freeSlots.buf));
 }
 //=============================================================================

@@ -3,6 +3,7 @@
 #include <kah_gfx/vulkan/gfx_vulkan_types.h>
 #include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_buffer.h>
+#include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
 #include <kah_gfx/gfx_pool.h>
 #include <kah_gfx/gfx_converter.h>
 
@@ -303,12 +304,16 @@ GfxTextureHandle gfx_texture_load_from_file( const char* path ){
     mem_cstd_free(bufferCopyRegionsAlloc);
     allocators()->cstd.free(rawImage.imageData);
     gfx_buffer_cleanup(&uploadBuffer);
+
+    gfx_bindless_image_next_free_slot(currentTexture);
+
     return outTextureHandle;
 }
 
 void gfx_texture_cleanup(GfxTextureHandle handle) {
     GfxTexture* currentTexture = gfx_pool_gfx_texture_get(handle);
     {
+        gfx_bindless_free_image(currentTexture->bindlessIndex);
         vkDestroyImageView(g_gfx.device, currentTexture->imageView, g_gfx.allocationCallbacks);
         vmaDestroyImage(g_gfx.allocator, currentTexture->image, currentTexture->allocation);
         *currentTexture = (GfxTexture){};

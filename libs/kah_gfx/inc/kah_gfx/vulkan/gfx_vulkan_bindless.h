@@ -3,6 +3,7 @@
 
 //===INCLUDES==================================================================
 #include <kah_gfx/vulkan/gfx_vulkan.h>
+#include <kah_gfx/vulkan/gfx_vulkan_types.h>
 //=============================================================================
 
 //===GLOABL_DEFINES============================================================
@@ -15,7 +16,10 @@
 
 //===API=======================================================================
 void gfx_bindless_set_sampler(uint32_t samplerIndex, VkSampler sampler);
+
 void gfx_bindless_set_image(uint32_t imageIndex, VkImageView imageView);
+void gfx_bindless_image_next_free_slot(GfxTexture* texture);
+void gfx_bindless_free_image(uint32_t imageIndex);
 
 VkDescriptorSetLayout gfx_bindless_get_descriptor_set_layout();
 VkDescriptorSet gfx_bindless_get_descriptor_set();

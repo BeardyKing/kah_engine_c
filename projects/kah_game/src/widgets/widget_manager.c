@@ -1,4 +1,3 @@
-
 #ifndef WINDGET_MANAGER_C_H
 #define WINDGET_MANAGER_C_H
 
@@ -15,6 +14,7 @@
 
 #include <kah_gfx/gfx_interface.h>
 #include <kah_gfx/gfx_pool.h>
+#include <kah_gfx/vulkan/gfx_vulkan_interface.h>
 #include <kah_gfx/vulkan/gfx_vulkan_imgui.h>
 #include <kah_gfx/vulkan/gfx_vulkan_bindless.h>
 #include <kah_gfx/vulkan/gfx_vulkan_texture.h>
@@ -54,12 +54,14 @@ struct DiffSelectionCtx {
     int32_t selectedFileIndex;
     GfxTextureHandle loadedTextureHandle;
     ImTextureRef imguiImageId;
+    LitEntityHandle litEnt;
     bool hasRun;
     struct {
         bool active;
         int counter;
         GfxTextureHandle loadedTextureHandle;
         ImTextureRef imguiImageId;
+
     }deferRelease;
 } typedef DiffSelectionCtx;
 
@@ -205,6 +207,9 @@ static void widget_image_diff_selection(DiffSelectionCtx* diffCtx){
                         GfxTexture* tex = gfx_pool_gfx_texture_get(diffCtx->loadedTextureHandle);
                         VkDescriptorSet set = cImGui_ImplVulkan_AddTexture(sampler,tex->imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
                         diffCtx->imguiImageId._TexID = (ImTextureID)set;
+                        LitEntity* ent = gfx_pool_lit_entity_get(diffCtx->litEnt);
+                        LitMaterial* mat = gfx_pool_lit_material_get(ent->materialIndex);
+                        mat->albedoImageIndex = tex->bindlessIndex;
                     }
                 }
                 ImGui_PopStyleColor();
@@ -233,12 +238,49 @@ static void widget_image_diff_defer_release(DiffSelectionCtx* diffCtx) {
     }
 }
 
+static void widget_image_diff_set_common(uint32_t* selectedIndex, DiffSelectionCtx* a, DiffSelectionCtx* b){
+    const char* meshItems[3] = {"quad", "cube", "octahedron"};
+    const char* selectedStr = meshItems[*selectedIndex];
+    if(ImGui_BeginCombo("diff mesh selection", selectedStr, 0)){
+        for (int n = 0; n < IM_ARRAYSIZE(meshItems); n++){
+            const bool is_selected = (*selectedIndex == n);
+            if (ImGui_SelectableEx(meshItems[n], is_selected, 0, (ImVec2){0,0})){
+                *selectedIndex = n;
+            }
+
+            if (is_selected){
+                ImGui_SetItemDefaultFocus();
+            }
+        }
+        ImGui_EndCombo();
+    }
+
+    GfxMeshHandle meshHandle = GFX_POOL_NULL_HANDLE;
+    if(*selectedIndex == 0){
+        meshHandle = gfx_mesh_built_in_quad();
+    }
+    if(*selectedIndex == 1){
+        meshHandle = gfx_mesh_built_in_cube();
+    }
+    if(*selectedIndex == 2){
+        meshHandle = gfx_mesh_built_in_octahedron();
+    }
+    LitEntity* aEnt = gfx_pool_lit_entity_get(a->litEnt);
+    LitEntity* bEnt = gfx_pool_lit_entity_get(b->litEnt);
+    aEnt->meshIndex = meshHandle;
+    bEnt->meshIndex = meshHandle;
+}
+
 static void widget_image_differ_update(){
+    static uint32_t selectedIndex = 0;
     WidgetInfo* cvarWidget = &s_widgetTable[KAH_WIDGET_IMAGE_DIFF];
     if (cvarWidget->isActive) {
         if (ImGui_Begin(cvarWidget->name, &cvarWidget->isActive, ImGuiWindowFlags_None)) {
-            if (ImGui_BeginTable("DiffTable", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp))
+            if (ImGui_BeginTable("DiffTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp))
             {
+                ImGui_TableNextColumn();
+                widget_image_diff_set_common(&selectedIndex, &s_diffImageCtxA, &s_diffImageCtxB);
+
                 ImGui_TableNextColumn();
                 widget_image_diff_selection(&s_diffImageCtxA);
 
@@ -255,11 +297,35 @@ static void widget_image_differ_update(){
     widget_image_diff_defer_release(&s_diffImageCtxB);
 }
 
+LitEntityHandle widget_lit_entity_create_new_default(){
+    LitEntityHandle litEntHandle = gfx_pool_lit_entity_handle_get_next();
+    LitEntity* lit = gfx_pool_lit_entity_get(litEntHandle);
+    lit->transformIndex = gfx_pool_transform_handle_get_next();
+    {
+        Transform* t = gfx_pool_transform_get(lit->transformIndex);
+        *t = transform_default();
+    }
+    lit->materialIndex = gfx_pool_lit_material_handle_get_next();
+    {
+        LitMaterial* m = gfx_pool_lit_material_get(lit->materialIndex);
+        m->albedoImageIndex = KAH_BINDLESS_TEXTURE_UV;
+    }
+    lit->meshIndex = gfx_mesh_built_in_cube();
+#if KAH_DEBUG
+    sprintf(lit->debug_name, "default name");
+#endif
+    return litEntHandle;
+}
+
 static void widget_image_differ_create() {
     sprintf(s_diffImageCtxA.dirPath, "%s/assets/textures/", fs_exe_dir());
     s_diffImageCtxA.loadedTextureHandle = GFX_POOL_GFX_TEXTURE_COUNT_MAX;
+    s_diffImageCtxA.litEnt = widget_lit_entity_create_new_default();
+
+
     sprintf(s_diffImageCtxB.dirPath, "%s/assets/textures/", fs_exe_dir());
     s_diffImageCtxB.loadedTextureHandle = GFX_POOL_GFX_TEXTURE_COUNT_MAX;
+    s_diffImageCtxB.litEnt = widget_lit_entity_create_new_default();
 }
 
 static void widget_image_differ_cleanup() {
@@ -301,7 +367,7 @@ void widget_manager_create(){
     s_widgetTable[KAH_WIDGET_TOOLBAR_NAV_MENU]      = (WidgetInfo){ .isActive = true,   .name = "Navigation bar"},
     s_widgetTable[KAH_WIDGET_CVARS]                 = (WidgetInfo){ .isActive = false,  .name = "Console Variabe debug", .toolbarTabName = "Debug Tools",    .shortcut = "`"};
     s_widgetTable[KAH_WIDGET_POOL_INSPECTOR]        = (WidgetInfo){ .isActive = true,   .name = "Pool inspector",        .toolbarTabName = "Editor"};
-    s_widgetTable[KAH_WIDGET_IMAGE_DIFF]            = (WidgetInfo){ .isActive = false,  .name = "Image differ",          .toolbarTabName = "Debug Tools"};
+    s_widgetTable[KAH_WIDGET_IMAGE_DIFF]            = (WidgetInfo){ .isActive = true,  .name = "Image differ",          .toolbarTabName = "Debug Tools"};
     s_widgetTable[KAH_WIDGET_IMGUI_DEMO_MENU]       = (WidgetInfo){ .isActive = true,   .name = "Imgui Demo Menu",       .toolbarTabName = "Debug Tools" };
 
     widget_image_differ_create();
@@ -310,7 +376,6 @@ void widget_manager_create(){
 
 void widget_manager_cleanup(){
     memset(s_widgetTable, 0, sizeof(s_widgetTable));
-
 
     widget_pool_inspector_cleanup();
     widget_image_differ_cleanup();

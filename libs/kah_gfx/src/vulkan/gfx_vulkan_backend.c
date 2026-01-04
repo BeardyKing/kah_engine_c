@@ -1025,8 +1025,18 @@ static void gfx_mesh_builtin_cleanup(){
     gfx_mesh_cleanup(s_builtIn.meshes.octahedron);
 }
 
+static void gfx_texture_builtin_cleanup(){
+    gfx_texture_cleanup(s_builtIn.textures.black);
+    gfx_texture_cleanup(s_builtIn.textures.white);
+    gfx_texture_cleanup(s_builtIn.textures.uvGridStandard);
+    gfx_texture_cleanup(s_builtIn.textures.uvGridOctahedral);
+}
+
+static void gfx_pipeline_cache_cleanup(){
+    vkDestroyPipelineCache(g_gfx.device, s_gfx.pipelineCache, g_gfx.allocationCallbacks);
+}
+
 static void gfx_texture_builtin_create(){
-    //TODO: Add wrapper bindless function to GfxTexture.
     s_builtIn.textures.black = gfx_texture_load_from_file("assets/textures/built_in/black.dds");
     s_builtIn.textures.white = gfx_texture_load_from_file("assets/textures/built_in/white.dds");
     s_builtIn.textures.uvGridStandard = gfx_texture_load_from_file("assets/textures/built_in/uv_grid_standard.dds");
@@ -1037,26 +1047,10 @@ static void gfx_texture_builtin_create(){
     GfxTexture* uvGridTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.uvGridStandard);
     GfxTexture* uvGridOctahedralTexture = gfx_pool_gfx_texture_get(s_builtIn.textures.uvGridOctahedral);
 
-    blackTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_BLACK;
-    whiteTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_WHITE;
-    uvGridTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV;
-    uvGridOctahedralTexture->bindlessIndex = KAH_BINDLESS_TEXTURE_UV_OCTAHEDRAL;
-
-    gfx_bindless_set_image(blackTexture->bindlessIndex, blackTexture->imageView);
-    gfx_bindless_set_image(whiteTexture->bindlessIndex, whiteTexture->imageView);
-    gfx_bindless_set_image(uvGridTexture->bindlessIndex, uvGridTexture->imageView);
-    gfx_bindless_set_image(uvGridOctahedralTexture->bindlessIndex, uvGridOctahedralTexture->imageView);
-}
-
-static void gfx_texture_builtin_cleanup(){
-    gfx_texture_cleanup(s_builtIn.textures.black);
-    gfx_texture_cleanup(s_builtIn.textures.white);
-    gfx_texture_cleanup(s_builtIn.textures.uvGridStandard);
-    gfx_texture_cleanup(s_builtIn.textures.uvGridOctahedral);
-}
-
-static void gfx_pipeline_cache_cleanup(){
-    vkDestroyPipelineCache(g_gfx.device, s_gfx.pipelineCache, g_gfx.allocationCallbacks);
+    core_assert(blackTexture->bindlessIndex == KAH_BINDLESS_TEXTURE_BLACK);
+    core_assert(whiteTexture->bindlessIndex == KAH_BINDLESS_TEXTURE_WHITE);
+    core_assert(uvGridTexture->bindlessIndex == KAH_BINDLESS_TEXTURE_UV);
+    core_assert(uvGridOctahedralTexture->bindlessIndex == KAH_BINDLESS_TEXTURE_UV_OCTAHEDRAL);
 }
 
 uint32_t gfx_swap_chain_index() {

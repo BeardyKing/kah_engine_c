@@ -26,7 +26,6 @@ int main(int argc, char** argv){
     {
         cvar_create("options.csv");
         core_cvars_register();
-        widget_manager_create();
         window_create("kah engine - runtime", vec2i_cvar_get(g_coreCvars.windowSize), vec2i_cvar_get(g_coreCvars.windowPosition));
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
         window_set_procedure_callback_func(gfx_imgui_get_proc_function_pointer());
@@ -35,6 +34,7 @@ int main(int argc, char** argv){
         input_create();
         gfx_create(window_get_handle());
         entity_builder_create();
+        widget_manager_create();
 
         while (window_is_open()){
             mem_arena_reset();
@@ -50,12 +50,12 @@ int main(int argc, char** argv){
             gfx_update();
         }
 
+        widget_manager_cleanup();
         entity_builder_create();
         gfx_cleanup();
         input_cleanup();
         time_cleanup();
         window_cleanup();
-        widget_manager_cleanup();
         cvar_cleanup();
     }
     allocator_cleanup();

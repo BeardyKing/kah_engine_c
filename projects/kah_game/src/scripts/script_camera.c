@@ -37,12 +37,8 @@ void script_camera_update(){
         transform->rotation.x += (-delta.y * mouseSpeed);
         transform->rotation.x = clamp_f32(transform->rotation.x, -ROTATION_CLAMP, ROTATION_CLAMP);
 
-        vec3f camForward = VEC3F_ZERO;
-        vec3f camRight = VEC3F_ZERO;
-        quat cameraRotation = QUAT_ZERO;
-        quat_from_euler(&cameraRotation, &transform->rotation);
-        quat_rotate_vec3f(&camForward, &cameraRotation, &VEC3F_WORLD_FORWARD);
-        quat_rotate_vec3f(&camRight, &cameraRotation, &VEC3F_WORLD_RIGHT);
+        const vec3f camForward = transform_get_forward(transform);
+        const vec3f camRight = transform_get_right(transform);
 
         vec3f moveDirection = VEC3F_ZERO;
         float moveSpeed = 5.0f;

@@ -10,8 +10,12 @@
 //=============================================================================
 
 //===API=======================================================================
-//mat4f transform_model_matrix              (   const Transform* t  )
-//mat4f transform_model_matrix_quat_cast    (   const Transform* t  )
+//mat4f transform_model_matrix              (   const Transform* t                          )
+//mat4f transform_model_matrix_quat_cast    (   const Transform* t                          )
+//vec3f transform_get_direction             (   const Transform* t,     const vec3f* axis   )
+//vec3f transform_get_forward               (   const Transform* t                          )
+//vec3f transform_get_up                    (   const Transform* t                          )
+//vec3f transform_get_right                 (   const Transform* t                          )
 //=============================================================================
 
 //===PUBLIC_STRUCTS============================================================
@@ -54,6 +58,26 @@ MATH_FORCE_INLINE mat4f transform_model_matrix_quat_cast(const Transform* t){
         mat4f_scale(&out, &t->scale);
     }
     return out;
+}
+
+MATH_FORCE_INLINE vec3f transform_get_direction(const Transform* t, const vec3f* axis){
+    vec3f transformForward = VEC3F_ZERO;
+    quat q = QUAT_ZERO;
+    quat_from_euler(&q, &t->rotation);
+    quat_rotate_vec3f(&transformForward, &q, axis);
+    return transformForward;
+}
+
+MATH_FORCE_INLINE vec3f transform_get_forward(const Transform* t){
+    return transform_get_direction(t, &VEC3F_WORLD_FORWARD);
+}
+
+MATH_FORCE_INLINE vec3f transform_get_up(const Transform* t){
+    return transform_get_direction(t, &VEC3F_WORLD_UP);
+}
+
+MATH_FORCE_INLINE vec3f transform_get_right(const Transform* t){
+    return transform_get_direction(t, &VEC3F_WORLD_RIGHT);
 }
 //=============================================================================
 

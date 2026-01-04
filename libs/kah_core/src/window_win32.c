@@ -83,19 +83,19 @@ static LRESULT CALLBACK window_procedure_callback(HWND hwnd, UINT uMsg, WPARAM w
         }
             //input
         case WM_KEYDOWN: {
-            input_key_down((int32_t) wParam);
+            input_set_key_down((int32_t) wParam);
             break;
         };
         case WM_KEYUP: {
-            input_key_up((int32_t) wParam);
+            input_set_key_up((int32_t) wParam);
             break;
         };
         case WM_SYSKEYDOWN : {
-            input_key_down((int32_t) wParam);
+            input_set_key_down((int32_t) wParam);
             break;
         };
         case WM_SYSKEYUP : {
-            input_key_up((int32_t) wParam);
+            input_set_key_up((int32_t) wParam);
             break;
         };
         case WM_INPUT: {
@@ -106,7 +106,7 @@ static LRESULT CALLBACK window_procedure_callback(HWND hwnd, UINT uMsg, WPARAM w
             s_windowInfo.virtualCursorPosition.x += raw->data.mouse.lLastX;
             s_windowInfo.virtualCursorPosition.y += raw->data.mouse.lLastY;
 
-            input_mouse_move(s_windowInfo.virtualCursorPosition.x,s_windowInfo.virtualCursorPosition.y);
+            input_set_mouse_move(s_windowInfo.virtualCursorPosition.x,s_windowInfo.virtualCursorPosition.y);
 
             //TODO:CORE consider moving other input callbacks to WM_INPUT i.e. WHEEL_DELTA and JOY PADS.
             //          wheel `raw->data.mouse.usButtonData`
@@ -115,46 +115,46 @@ static LRESULT CALLBACK window_procedure_callback(HWND hwnd, UINT uMsg, WPARAM w
         case WM_MOUSEMOVE: {
             const int32_t x = GET_X_LPARAM(lParam);
             const int32_t y = GET_Y_LPARAM(lParam);
-            input_mouse_windowed_position(x, y);
+            input_set_mouse_windowed_position(x, y);
             break;
         }
         case WM_RBUTTONDOWN: {
-            input_mouse_down((int32_t)MOUSE_RIGHT);
+            input_set_mouse_down((int32_t)MOUSE_RIGHT);
             break;
         }
         case WM_RBUTTONUP: {
-            input_mouse_up((int32_t) MOUSE_RIGHT);
+            input_set_mouse_up((int32_t) MOUSE_RIGHT);
             break;
         }
         case WM_LBUTTONDOWN: {
-            input_mouse_down((int32_t) MOUSE_LEFT);
+            input_set_mouse_down((int32_t) MOUSE_LEFT);
             break;
         }
         case WM_LBUTTONUP: {
-            input_mouse_up((int32_t) MOUSE_LEFT);
+            input_set_mouse_up((int32_t) MOUSE_LEFT);
             break;
         }
         case WM_MBUTTONDOWN: {
-            input_mouse_down((int32_t) MOUSE_MIDDLE);
+            input_set_mouse_down((int32_t) MOUSE_MIDDLE);
             break;
         }
         case WM_MBUTTONUP: {
-            input_mouse_up((int32_t) MOUSE_MIDDLE);
+            input_set_mouse_up((int32_t) MOUSE_MIDDLE);
             break;
         }
         case WM_MOUSEWHEEL: {
             const int32_t scrollDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-            input_mouse_scroll(scrollDelta);
+            input_set_mouse_scroll(scrollDelta);
             break;
         }
         case WM_XBUTTONDOWN: {
             switch (GET_XBUTTON_WPARAM(wParam)) {
                 case XBUTTON1: {
-                    input_mouse_down((int32_t) MOUSE_BACK);
+                    input_set_mouse_down((int32_t) MOUSE_BACK);
                     break;
                 }
                 case XBUTTON2: {
-                    input_mouse_down((int32_t) MOUSE_FORWARD);
+                    input_set_mouse_down((int32_t) MOUSE_FORWARD);
                     break;
                 }
                 default:
@@ -165,11 +165,11 @@ static LRESULT CALLBACK window_procedure_callback(HWND hwnd, UINT uMsg, WPARAM w
         case WM_XBUTTONUP: {
             switch (GET_XBUTTON_WPARAM(wParam)) {
                 case XBUTTON1: {
-                    input_mouse_up((int32_t) MOUSE_BACK);
+                    input_set_mouse_up((int32_t) MOUSE_BACK);
                     break;
                 }
                 case XBUTTON2: {
-                    input_mouse_up((int32_t) MOUSE_FORWARD);
+                    input_set_mouse_up((int32_t) MOUSE_FORWARD);
                     break;
                 }
                 default:

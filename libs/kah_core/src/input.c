@@ -132,7 +132,7 @@ void input_set_scroll_sensitivity(const float sensitivity) {
     s_input.mouse.scrollSensitivity = sensitivity;
 }
 
-void input_key_down(const int32_t keyCode) {
+void input_set_key_down(const int32_t keyCode) {
     KeyInfo *keyInfo = &s_input.keyboard[keyCode];
     if (!keyInfo->keyDown) {
         keyInfo->keyDown = true;
@@ -140,13 +140,13 @@ void input_key_down(const int32_t keyCode) {
     }
 }
 
-void input_key_up(const int32_t keyCode) {
+void input_set_key_up(const int32_t keyCode) {
     KeyInfo *keyInfo = &s_input.keyboard[keyCode];
     keyInfo->keyDown = false;
     keyInfo->timeReleased = s_input.cachedCurrentTime;
 }
 
-void input_mouse_down(const int32_t keyCode) {
+void input_set_mouse_down(const int32_t keyCode) {
     KeyInfo *keyInfo = &s_input.mouseKeys[keyCode];
     if (!keyInfo->keyDown) {
         keyInfo->keyDown = true;
@@ -154,25 +154,25 @@ void input_mouse_down(const int32_t keyCode) {
     }
 }
 
-void input_mouse_up(const int32_t keyCode) {
+void input_set_mouse_up(const int32_t keyCode) {
     KeyInfo *keyInfo = &s_input.mouseKeys[keyCode];
     keyInfo->keyDown = false;
     keyInfo->timeReleased = s_input.cachedCurrentTime;
 }
 
-void input_mouse_move(const int32_t x, const int32_t y) {
+void input_set_mouse_move(const int32_t x, const int32_t y) {
     MouseInfo *cursor = &s_input.mouse;
     cursor->virtualPosition.x = x;
     cursor->virtualPosition.y = y;
 }
 
-void input_mouse_windowed_position(const int32_t x, const int32_t y) {
+void input_set_mouse_windowed_position(const int32_t x, const int32_t y) {
     MouseInfo *cursor = &s_input.mouse;
     cursor->windowedPosition.x = x;
     cursor->windowedPosition.y = y;
 }
 
-void input_mouse_scroll(const int32_t y) {
+void input_set_mouse_scroll(const int32_t y) {
     MouseInfo *cursor = &s_input.mouse;
     cursor->currentScrollPosition += y;
 }

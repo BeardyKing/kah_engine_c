@@ -203,7 +203,7 @@ static void window_poll(){
             {
                 int key = XkbKeycodeToKeysym(s_windowInfo.xLibHandles.display, s_windowInfo.event.xkey.keycode, 0, 0);
                 InputKeyCode keyCode = x11_to_kah_keycode(key);
-                input_key_down((int32_t)keyCode);
+                input_set_key_down((int32_t)keyCode);
 
                 if (key == XK_Q){
                     if (s_windowInfo.currentCursorState != CURSOR_LOCKED){
@@ -221,7 +221,7 @@ static void window_poll(){
             {
                 int key = XkbKeycodeToKeysym(s_windowInfo.xLibHandles.display, s_windowInfo.event.xkey.keycode, 0, 0);
                 InputKeyCode keyCode = x11_to_kah_keycode(key);
-                input_key_up((int32_t)keyCode);
+                input_set_key_up((int32_t)keyCode);
                 break;
             }
 
@@ -238,8 +238,8 @@ static void window_poll(){
                 s_windowInfo.virtualCursorPosition.x += delta.x;
                 s_windowInfo.virtualCursorPosition.y += delta.y;
 
-                input_mouse_move(s_windowInfo.virtualCursorPosition.x, s_windowInfo.virtualCursorPosition.y);
-                input_mouse_windowed_position(s_windowInfo.event.xmotion.x, s_windowInfo.event.xmotion.y);
+                input_set_mouse_move(s_windowInfo.virtualCursorPosition.x, s_windowInfo.virtualCursorPosition.y);
+                input_set_mouse_windowed_position(s_windowInfo.event.xmotion.x, s_windowInfo.event.xmotion.y);
 
                 if (s_windowInfo.currentCursorState == CURSOR_HIDDEN_LOCKED_LOCK_MOUSE_POS){
                     s_windowInfo.lastPosition.x = s_windowInfo.lockedCursorPosition.x;
@@ -263,19 +263,19 @@ static void window_poll(){
                 switch (button)
                 {
                 case Button1:
-                    input_mouse_down((int32_t)MOUSE_LEFT);
+                    input_set_mouse_down((int32_t)MOUSE_LEFT);
                     break;
                 case Button2:
-                    input_mouse_down((int32_t)MOUSE_MIDDLE);
+                    input_set_mouse_down((int32_t)MOUSE_MIDDLE);
                     break;
                 case Button3:
-                    input_mouse_down((int32_t)MOUSE_RIGHT);
+                    input_set_mouse_down((int32_t)MOUSE_RIGHT);
                     break;
                 case Button4: // Scroll up
-                    input_mouse_scroll(1);
+                    input_set_mouse_scroll(1);
                     break;
                 case Button5: // Scroll down
-                    input_mouse_scroll(-1);
+                    input_set_mouse_scroll(-1);
                     break;
                 default:
                     break;
@@ -289,13 +289,13 @@ static void window_poll(){
                 switch (button)
                 {
                 case Button1:
-                    input_mouse_up((int32_t)MOUSE_LEFT);
+                    input_set_mouse_up((int32_t)MOUSE_LEFT);
                     break;
                 case Button2:
-                    input_mouse_up((int32_t)MOUSE_MIDDLE);
+                    input_set_mouse_up((int32_t)MOUSE_MIDDLE);
                     break;
                 case Button3:
-                    input_mouse_up((int32_t)MOUSE_RIGHT);
+                    input_set_mouse_up((int32_t)MOUSE_RIGHT);
                     break;
                 default:
                     break;

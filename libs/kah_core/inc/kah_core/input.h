@@ -29,15 +29,15 @@ float input_mouse_down_time(InputMouseButton button);
 float input_mouse_scroll_delta_raw();
 float input_mouse_scroll_delta();
 
-void input_key_down(int32_t asciiKeyCode);
-void input_key_up(int32_t asciiKeyCode);
+void input_set_key_down(int32_t asciiKeyCode);
+void input_set_key_up(int32_t asciiKeyCode);
 
-void input_mouse_down(int32_t keyCode);
-void input_mouse_up(int32_t keyCode);
+void input_set_mouse_down(int32_t keyCode);
+void input_set_mouse_up(int32_t keyCode);
 
-void input_mouse_move(int32_t x, int32_t y);
-void input_mouse_scroll(int32_t y);
-void input_mouse_windowed_position(int32_t x, int32_t y);
+void input_set_mouse_move(int32_t x, int32_t y);
+void input_set_mouse_scroll(int32_t y);
+void input_set_mouse_windowed_position(int32_t x, int32_t y);
 
 void input_set_mouse_sensitivity(vec2f sensitivity);
 void input_set_scroll_sensitivity(float sensitivity);

@@ -25,7 +25,7 @@ static void entity_primary_camera_create(){
 
     Transform* transform = gfx_pool_transform_get(camEnt->transformIndex);
     transform->position = (vec3f){-1.5f, 0.5f, 2.5f};
-    transform->rotation = (vec3f){-0.2f, -0.65f, 0.0f};
+    transform->rotation = (vec3f){0.0f, 0.0f, 0.0f};
     transform->scale = (vec3f){1.0f, 1.0f, 1.0f};
 
     Camera* cam = gfx_pool_camera_get(camEnt->cameraIndex);

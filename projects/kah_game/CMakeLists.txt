@@ -13,6 +13,8 @@ add_executable(kah_game
         src/scripts/script_camera.c
         inc/client/scripts/script_manager.h
         src/scripts/script_manager.c
+        inc/client/widgets/widgets_common.h
+        src/widgets/widgets_common.c
 )
 
 

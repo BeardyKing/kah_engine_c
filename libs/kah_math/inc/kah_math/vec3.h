@@ -63,13 +63,13 @@ MATH_FORCE_INLINE void vec3f_div(vec3f* dest, const vec3f* v){
 }
 
 MATH_FORCE_INLINE void vec3f_mul_s(vec3f* dest, const float scalar){
-    math_assert(scalar != 0.0f);
     dest->x *= scalar;
     dest->y *= scalar;
     dest->z *= scalar;
 }
 
 MATH_FORCE_INLINE void vec3f_div_s(vec3f* dest, const float scalar){
+    math_assert(scalar != 0.0f);
     dest->x /= scalar;
     dest->y /= scalar;
     dest->z /= scalar;

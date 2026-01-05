@@ -1,3 +1,4 @@
+#include "client/widgets/widgets_common.h"
 #ifndef WINDGET_MANAGER_C_H
 #define WINDGET_MANAGER_C_H
 
@@ -241,7 +242,9 @@ static void widget_image_diff_defer_release(DiffSelectionCtx* diffCtx) {
 static void widget_image_diff_set_common(uint32_t* selectedIndex, DiffSelectionCtx* a, DiffSelectionCtx* b){
     const char* meshItems[3] = {"quad", "cube", "octahedron"};
     const char* selectedStr = meshItems[*selectedIndex];
-    if(ImGui_BeginCombo("diff mesh selection", selectedStr, 0)){
+    ImGui_Text("Mesh:");
+    ImGui_SameLine();
+    if(ImGui_BeginCombo("##Mesh:", selectedStr, 0)){
         for (int n = 0; n < IM_ARRAYSIZE(meshItems); n++){
             const bool is_selected = (*selectedIndex == n);
             if (ImGui_SelectableEx(meshItems[n], is_selected, 0, (ImVec2){0,0})){
@@ -255,6 +258,24 @@ static void widget_image_diff_set_common(uint32_t* selectedIndex, DiffSelectionC
         ImGui_EndCombo();
     }
 
+    static vec3f s_commonMeshRotation = VEC3F_ZERO;
+    ImGui_NewLine();
+    draw_vec3_control("Rot:", &s_commonMeshRotation, 0.0f, 35.0f, 0.2f);
+    ImGui_NewLine();
+
+    static float s_meshScale = 0.9f;
+    ImGui_DragFloatEx("Mesh scale", &s_meshScale, 0.01f, -2, 2, NULL, 0);
+    vec3f meshScale = (vec3f){s_meshScale,fabsf(s_meshScale),fabsf(s_meshScale)};
+
+    static float s_offsetX = 0.5f;
+    ImGui_DragFloatEx("Mesh offset X", &s_offsetX, 0.01f, -2, 2, NULL, 0);
+
+    static float s_offsetY = 0.0f;
+    ImGui_DragFloatEx("Mesh offset Y", &s_offsetY, 0.01f, -2, 2, NULL, 0);
+
+    static float s_offsetZ = 1.5f;
+    ImGui_DragFloatEx("Mesh offset Z", &s_offsetZ, 0.01f, -2, 2, NULL, 0);
+
     GfxMeshHandle meshHandle = GFX_POOL_NULL_HANDLE;
     if(*selectedIndex == 0){
         meshHandle = gfx_mesh_built_in_quad();
@@ -265,10 +286,46 @@ static void widget_image_diff_set_common(uint32_t* selectedIndex, DiffSelectionC
     if(*selectedIndex == 2){
         meshHandle = gfx_mesh_built_in_octahedron();
     }
-    LitEntity* aEnt = gfx_pool_lit_entity_get(a->litEnt);
-    LitEntity* bEnt = gfx_pool_lit_entity_get(b->litEnt);
-    aEnt->meshIndex = meshHandle;
-    bEnt->meshIndex = meshHandle;
+
+    CameraEntity* cam = gfx_pool_camera_entity_get(gfx_camera_main_get_active());
+    Transform* camTransform = gfx_pool_transform_get(cam->transformIndex);
+
+    vec3f camUp = transform_get_up(camTransform);
+    vec3f_mul_s(&camUp, s_offsetY);
+    vec3f camForward = transform_get_forward(camTransform);
+    vec3f_mul_s(&camForward, s_offsetZ);
+    vec3f camRight = transform_get_right(camTransform);
+    vec3f_mul_s(&camRight, s_offsetX);
+
+    {
+        LitEntity* aEnt = gfx_pool_lit_entity_get(a->litEnt);
+
+        aEnt->meshIndex = meshHandle;
+
+        Transform* aTransform = gfx_pool_transform_get(aEnt->transformIndex);
+        aTransform->position = camTransform->position;
+        vec3f_add(&aTransform->position, &camUp);
+        vec3f_add(&aTransform->position, &camForward);
+        vec3f_add(&aTransform->position, &camRight);
+
+        aTransform->rotation = s_commonMeshRotation;
+
+        aTransform->scale = meshScale;
+    }
+    {
+        LitEntity* bEnt = gfx_pool_lit_entity_get(b->litEnt);
+        bEnt->meshIndex = meshHandle;
+
+        Transform* bTransform = gfx_pool_transform_get(bEnt->transformIndex);
+        bTransform->position = camTransform->position;
+        vec3f_add(&bTransform->position, &camUp);
+        vec3f_add(&bTransform->position, &camForward);
+        vec3f_sub(&bTransform->position, &camRight);
+
+        bTransform->rotation = s_commonMeshRotation;
+
+        bTransform->scale = meshScale;
+    }
 }
 
 static void widget_image_differ_update(){

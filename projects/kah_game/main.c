@@ -44,9 +44,11 @@ int main(int argc, char** argv){
             input_update();
 #if CHECK_FEATURE(FEATURE_GFX_IMGUI)
             gfx_imgui_begin();
-            widget_manager_update();
 #endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
             script_manager_update();
+#if CHECK_FEATURE(FEATURE_GFX_IMGUI)
+            widget_manager_update();
+#endif //CHECK_FEATURE(FEATURE_GFX_IMGUI)
             gfx_update();
         }
 

@@ -53,7 +53,7 @@ int main(int argc, char** argv){
         }
 
         widget_manager_cleanup();
-        entity_builder_create();
+        entity_builder_cleanup();
         gfx_cleanup();
         input_cleanup();
         time_cleanup();

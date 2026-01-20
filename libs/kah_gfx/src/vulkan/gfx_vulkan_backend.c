@@ -185,15 +185,12 @@ static struct GfxFeatures{
     VkPhysicalDeviceFeatures2 deviceFeatures;
     VkPhysicalDeviceVulkan11Features features11;
     VkPhysicalDeviceVulkan12Features features12;
-    VkPhysicalDeviceVulkan13Features features13;
-    VkPhysicalDeviceVulkan14Features features14;
 
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainFeatures;
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT dynamicState1Features;
     VkPhysicalDeviceExtendedDynamicState2FeaturesEXT dynamicState2Features;
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT dynamicState3Features;
     VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures;
-    VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timelineSemaphoreFeatures;
     VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features;
 } s_gfxFeatures = {};
 
@@ -218,14 +215,11 @@ static void gfx_data_structures_create(){
         .deviceFeatures =           (VkPhysicalDeviceFeatures2){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2} ,
         .features11 =               (VkPhysicalDeviceVulkan11Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES } ,
         .features12 =               (VkPhysicalDeviceVulkan12Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES } ,
-        .features13 =               (VkPhysicalDeviceVulkan13Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES } ,
-        .features14 =               (VkPhysicalDeviceVulkan14Features){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES } ,
         .swapchainFeatures =        (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT } ,
         .dynamicState1Features =    (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT } ,
         .dynamicState2Features =    (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT } ,
         .dynamicState3Features =    (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT } ,
         .dynamicRenderingFeatures = (VkPhysicalDeviceDynamicRenderingFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR },
-        .timelineSemaphoreFeatures = (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR },
         .synchronization2Features = (VkPhysicalDeviceSynchronization2FeaturesKHR){.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR },
     };
 
@@ -668,18 +662,13 @@ static void gfx_physical_device_queues_create(){
     const char* extDynamicState2     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME );
     const char* extDynamicState3     = gfx_find_supported_device_extension_name( VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME );
     const char* swapchainMaintence1  = gfx_find_supported_device_extension_name( VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME );
+    const char* surfaceMaintence1    = gfx_find_supported_device_extension_name( VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME );
     const char* timelineSemaphore    = gfx_find_supported_device_extension_name( VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME );
-    const char* synchronization2    = gfx_find_supported_device_extension_name( VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME );
+    const char* synchronization2     = gfx_find_supported_device_extension_name( VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME );
 
     s_gfxFeatures.deviceFeatures.pNext = &s_gfxFeatures.features11;
     if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,2,0)){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features12);
-    }
-    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
-        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features13);
-    }
-    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,4,0)){
-        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.features14);
     }
 
     if(swapChainName){
@@ -688,8 +677,17 @@ static void gfx_physical_device_queues_create(){
     if(pushDescriptor){
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &pushDescriptor);
     }
-    if(swapchainMaintence1){
+    if(swapchainMaintence1 && surfaceMaintence1){
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &swapchainMaintence1);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &surfaceMaintence1);
+    }
+    if(dynamicRenderingName){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
+    }
+    if(synchronization2){
+        pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.synchronization2Features);
+        dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &synchronization2);
     }
     if(extDynamicState1){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState1Features);
@@ -703,29 +701,13 @@ static void gfx_physical_device_queues_create(){
         pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicState3Features);
         dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &extDynamicState3);
     }
-    if(s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,3,0)){
-        if( dynamicRenderingName){
-            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.dynamicRenderingFeatures);
-            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &dynamicRenderingName);
-        }
-        if( synchronization2){
-            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.synchronization2Features);
-            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &synchronization2);
-        }
-    }
-    if(s_gfx.deviceProperties.apiVersion < VK_MAKE_VERSION(1,2,0) ){
-        if(timelineSemaphore){
-            pnext_chain_push_front(&s_gfxFeatures.features11, &s_gfxFeatures.timelineSemaphoreFeatures);
-            dynamic_array_push(gfx_allocator_arena(), &usedDeviceExtensions, &timelineSemaphore);
-        }
-    }
 
     vkGetPhysicalDeviceFeatures2(g_gfx.physicalDevice, &s_gfxFeatures.deviceFeatures);
     core_assert_msg(s_gfxFeatures.features12.descriptorIndexing, "err: Descriptor indexing is required");
     // core_assert_msg(s_gfxFeatures.features12.bufferDeviceAddress, "err: Buffer device address is required");
-    core_assert_msg(s_gfxFeatures.features12.timelineSemaphore || s_gfxFeatures.timelineSemaphoreFeatures.timelineSemaphore, "err: Timeline semaphores is required");
-    core_assert_msg(s_gfxFeatures.features13.dynamicRendering || s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
-    core_assert_msg(s_gfxFeatures.features13.synchronization2 || s_gfxFeatures.synchronization2Features.synchronization2, "err: Synchronization 2 is required");
+    core_assert_msg(s_gfxFeatures.features12.timelineSemaphore, "err: Timeline semaphores is required");
+    core_assert_msg(s_gfxFeatures.dynamicRenderingFeatures.dynamicRendering, "err: Dynamic rendering is required");
+    core_assert_msg(s_gfxFeatures.synchronization2Features.synchronization2, "err: Synchronization 2 is required");
 
     s_gfxFeatures.deviceFeatures.features.robustBufferAccess = false; //Fixes VUID-VkDeviceCreateInfo-robustBufferAccess-10247 when used with descriptorIndexing.
 
@@ -1164,27 +1146,11 @@ void gfx_command_buffer_end_immediate_recording(VkCommandBuffer cmdBuffer) {
 }
 
 void gfx_command_buffer_begin_rendering(VkCommandBuffer cmdBuffer, const VkRenderingInfoKHR *renderingInfo) {
-    //TODO: Resolve this to KAH engine specific FP
-    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
-        vkCmdBeginRendering(cmdBuffer, renderingInfo);
-    }
     vkCmdBeginRenderingKHR(cmdBuffer, renderingInfo);
 }
 
 void gfx_command_buffer_end_rendering(VkCommandBuffer cmdBuffer) {
-    //TODO: Resolve this to KAH engine specific FP
-    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
-        vkCmdEndRendering(cmdBuffer);
-    }
     vkCmdEndRenderingKHR(cmdBuffer);
-}
-
-static VkResult gfx_queue_submit_2(VkQueue queue, uint32_t submitCount, const VkSubmitInfo2* pSubmits, VkFence fence){
-    //TODO: Resolve this to KAH engine specific FP
-    if(s_gfx.deviceProperties.apiVersion >= VK_MAKE_VERSION(1,3,0)){
-        return vkQueueSubmit2(queue, submitCount, pSubmits, fence);
-    }
-    return vkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
 }
 
 void gfx_command_buffer_insert_memory_barrier(
@@ -1254,7 +1220,7 @@ static void gfx_render_frame(VkCommandBuffer cmdBuffer) {
 
     const VkFence waitFence = s_gfx.graphicsFenceWait[gfx_swap_chain_index()];
 
-    const VkResult submitRes = gfx_queue_submit_2( g_gfx.queue, 1, &submitInfo, waitFence );
+    const VkResult submitRes = vkQueueSubmit2KHR( g_gfx.queue, 1, &submitInfo, waitFence );
     core_assert(submitRes == VK_SUCCESS);
 }
 
